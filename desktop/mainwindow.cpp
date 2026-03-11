@@ -1,53 +1,53 @@
-//
-// Created by Egor on 12.02.2026.
-//
 #include "mainwindow.h"
-#include "../core/core.h"
 
-MainWindow::MainWindow(QWidget *parent)
+#include <QTabWidget>
+
+#include "net/api_client.h"
+#include "privacy/stub_encryptor.h"
+#include "outbox/outbox_store.h"
+#include "outbox/outbox_worker.h"
+
+#include "pages/dashboard_page.h"
+#include "pages/verify_page.h"
+#include "pages/settings_page.h"
+
+MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
+    , tabs_(new QTabWidget(this))
+    , api_(new ApiClient(this))
+    , encryptor_(new StubEncryptor())
+    , outbox_(new OutboxStore(this))
+    , worker_(new OutboxWorker(api_, outbox_, this))
+    , dashboard_(new DashboardPage(api_, encryptor_, outbox_, worker_, this))
+    , verify_(new VerifyPage(this))
+    , settings_(new SettingsPage(this))
 {
-    auto *central = new QWidget(this);
-    auto *layout = new QVBoxLayout(central);
+    setWindowTitle("Blind Signature");
+    resize(1120, 720);
 
-    messageEdit = new QTextEdit;
-    messageEdit->setPlaceholderText("Enter message...");
+    tabs_->addTab(dashboard_, "Dashboard");
+    tabs_->addTab(verify_, "Verify");
+    tabs_->addTab(settings_, "Settings");
 
-    outputEdit = new QTextEdit;
-    outputEdit->setReadOnly(true);
+    setCentralWidget(tabs_);
 
-    testButton = new QPushButton("Run Blind Signature Pipeline");
+    // Wire settings -> dashboard/api
+    connect(settings_, &SettingsPage::settingsChanged, dashboard_, &DashboardPage::applySettings);
 
-    layout->addWidget(messageEdit);
-    layout->addWidget(testButton);
-    layout->addWidget(outputEdit);
+    // Wire last vote -> verify
+    connect(dashboard_, &DashboardPage::lastVoteForVerify, this,
+            [this](const QString& pk, const QString& msg, const QString& sig) {
+                verify_->setPublicKey(pk);
+                verify_->setMessage(msg);
+                verify_->setSignature(sig);
+            });
 
-    setCentralWidget(central);
+    // Apply defaults from settings page once
+    dashboard_->applySettings(settings_->settings());
 
-    connect(testButton, &QPushButton::clicked, this, [=]() {
+    worker_->start();
+}
 
-        std::string msg = messageEdit->toPlainText().toStdString();
-
-        std::string keys = KeyGen();
-        auto pos = keys.find(':');
-        std::string pk = keys.substr(0, pos);
-        std::string sk = keys.substr(pos + 1);
-
-        std::string blind_res = Blind(pk, msg);
-        pos = blind_res.find(':');
-        std::string blinded_msg = blind_res.substr(0, pos);
-        std::string inv = blind_res.substr(pos + 1);
-
-        std::string blind_sig = BlindSign(sk, blinded_msg);
-        std::string sig = Finalize(pk, msg, blind_sig, inv);
-        bool ok = Verify(pk, msg, sig);
-
-        QString result =
-            "PK: " + QString::fromStdString(pk) + "\n\n" +
-            "Blinded: " + QString::fromStdString(blinded_msg) + "\n\n" +
-            "Signature: " + QString::fromStdString(sig) + "\n\n" +
-            "Verify: " + (ok ? "OK" : "FAIL");
-
-        outputEdit->setText(result);
-    });
+MainWindow::~MainWindow() {
+    delete encryptor_;
 }

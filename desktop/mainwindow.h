@@ -1,23 +1,33 @@
-//
-// Created by Egor on 12.02.2026.
-//
-
 #pragma once
 
 #include <QMainWindow>
-#include <QPushButton>
-#include <QTextEdit>
-#include <QVBoxLayout>
 
-class MainWindow : public QMainWindow
-{
+class QTabWidget;
+
+class ApiClient;
+class IEncryptor;
+class OutboxStore;
+class OutboxWorker;
+
+class DashboardPage;
+class VerifyPage;
+class SettingsPage;
+
+class MainWindow : public QMainWindow {
     Q_OBJECT
-
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget* parent = nullptr);
+    ~MainWindow() override;
 
 private:
-    QTextEdit* messageEdit;
-    QTextEdit* outputEdit;
-    QPushButton* testButton;
+    QTabWidget* tabs_;
+
+    ApiClient* api_;
+    IEncryptor* encryptor_;
+    OutboxStore* outbox_;
+    OutboxWorker* worker_;
+
+    DashboardPage* dashboard_;
+    VerifyPage* verify_;
+    SettingsPage* settings_;
 };
