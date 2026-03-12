@@ -3,11 +3,13 @@
 ## 1) Start server
 
 ```powershell
-g++ -std=c++20 -O2 -D_WIN32_WINNT=0x0A00 server.cpp -o blind_server.exe -lws2_32
+g++ -std=c++20 -O2 -D_WIN32_WINNT=0x0A00 main.cpp handlers.cpp core/core.cpp -o blind_server.exe -lws2_32
 ./blind_server.exe
 ```
 
 Server URL: `http://127.0.0.1:8080`
+
+JSON library: `nlohmann/json` (vendored single header at `nlohmann_json.hpp`).
 
 ## 2) Basic order
 
@@ -103,3 +105,5 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8080/polls/$pollId/submit"
 # Results
 Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8080/polls/$pollId/results"
 ```
+
+
