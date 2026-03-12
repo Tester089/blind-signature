@@ -1,1 +1,1 @@
-write divmod, modpow, modinv, gcd, miller_rabin, gen_prime and make it great again
+miller_rabin, gen_prime, hash_msg and make it great again
