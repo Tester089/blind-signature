@@ -16,7 +16,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(blind_sig_tests tests/test002.cpp)
+add_executable(blind_sig_tests tests/core-test.cpp)
 target_include_directories(blind_sig_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(blind_sig_tests gtest gtest_main)
 
