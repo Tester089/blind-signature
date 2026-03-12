@@ -1,100 +1,89 @@
 #pragma once
 
 #include <QWidget>
-#include <QString>
+#include <QStringList>
 
-#include "pages/settings_page.h"
-#include "net/dto.h"
-
-class ApiClient;
-class IEncryptor;
-class OutboxStore;
-class OutboxWorker;
+#include "net/api_client.h"
 
 class QComboBox;
 class QPushButton;
 class QLabel;
+class QLineEdit;
+class QTextEdit;
 class QPlainTextEdit;
 class QCheckBox;
 class QSpinBox;
-class QTextEdit;
+class QFrame;
 
 class ConnectButton;
 class StatusBadge;
-class CopyField;
 
-class DashboardPage : public QWidget {
-    Q_OBJECT
+class DashboardPage : public QWidget
+{
+Q_OBJECT
+
 public:
-    DashboardPage(ApiClient* api, IEncryptor* encryptor, OutboxStore* outbox, OutboxWorker* worker, QWidget* parent = nullptr);
+    explicit DashboardPage(QWidget* parent = nullptr);
 
-public slots:
-    void applySettings(const UiSettings& s);
-
-signals:
-    void lastVoteForVerify(const QString& publicKey, const QString& message, const QString& signature);
+    void setServerUrl(const QString& url);
 
 private:
     void setupUi();
-    void connectSignals();
+    void setupConnections();
+    void appendLog(const QString& text);
+    void setBusyState(const QString& text);
+    void setOkState(const QString& text);
+    void setErrorState(const QString& text);
 
-    void refreshPolls();
-    void onPollSelected(int idx);
+    void updatePollInfoUi();
+    void startVoteFlow();
+    QString generateBallotId() const;
 
-    void startVote();
-    void continueAfterToken();
-    void scheduleOrSend();
-
-    void setStatus(StatusBadge* badge, const QString& text, bool isError);
-    void log(const QString& line);
-
-    void updateOutboxInfo();
-
+private:
     ApiClient* api_;
-    IEncryptor* encryptor_;
-    OutboxStore* outbox_;
-    OutboxWorker* worker_;
 
-    UiSettings settings_;
+    QString currentPollId_;
+    QString currentPublicKey_;
+    QString currentToken_;
+    QString currentBallot_;
+    QString currentBlinded_;
+    QString currentInverse_;
+    QString currentBlindSignature_;
 
+    PollDetails currentPoll_;
 
-    dto::PollDetails poll_;
-    QStringList tokens_;
+    // top bar
+    QLabel* serverValueLabel_;
+    QLabel* modeValueLabel_;
 
+    // left card
+    QComboBox* pollsCombo_;
+    QPushButton* refreshPollsButton_;
+    QPushButton* createPollButton_;
 
-    QString candidate_;
-    QString ballotId_;
-    QString ballotPlain_;
-    QString ciphertext_;
-    QString messageToSign_;
-    QString blinded_;
-    QString inverse_;
-    QString blindSig_;
-    QString finalSig_;
-    QString outboxIdLast_;
+    QLabel* pollTitleValueLabel_;
+    QLabel* pollStatusValueLabel_;
+    QLabel* pollVotesValueLabel_;
 
-
-    QLabel* serverChip_;
-    QComboBox* pollCombo_;
-    QPushButton* refreshBtn_;
-    QPushButton* createBtn_;
-
-    QLabel* pollInfo_;
+    // vote card
     QComboBox* candidateCombo_;
+    QCheckBox* delayCheckBox_;
+    QSpinBox* minDelaySpin_;
+    QSpinBox* maxDelaySpin_;
 
-    ConnectButton* connectBtn_;
+    // center area
+    ConnectButton* connectButton_;
     StatusBadge* statusBadge_;
-    QLabel* outboxInfo_;
 
-    QPushButton* advancedToggle_;
+    // advanced
+    QPushButton* advancedButton_;
     QWidget* advancedPanel_;
-
-    CopyField* msgField_;
-    CopyField* blindedField_;
-    CopyField* invField_;
-    CopyField* blindSigField_;
-    CopyField* finalSigField_;
-    CopyField* cipherField_;
-
+    QLineEdit* publicKeyEdit_;
+    QLineEdit* tokenEdit_;
+    QLineEdit* ballotEdit_;
+    QLineEdit* blindedEdit_;
+    QLineEdit* inverseEdit_;
+    QLineEdit* blindSignatureEdit_;
+    QLineEdit* finalSignatureEdit_;
     QPlainTextEdit* logEdit_;
 };
