@@ -25,7 +25,7 @@ static void applyVpnDark(QApplication& app) {
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-    app.setApplicationName("BlindSignatureVPN");
+    app.setApplicationName("BlindSignature");
     app.setOrganizationName("BlindSignatureTeam");
 
     applyVpnDark(app);

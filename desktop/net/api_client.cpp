@@ -7,21 +7,45 @@
 #include <QNetworkRequest>
 
 namespace {
-    QByteArray makeJsonBody(const QJsonObject& obj)
-    {
-        return QJsonDocument(obj).toJson(QJsonDocument::Compact);
+QByteArray makeJsonBody(const QJsonObject &obj)
+{
+    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
+}
+}
+
+ApiClient::ApiClient(QObject *parent)
+    : QObject(parent),
+      baseUrl_(normalizeBaseUrl(QUrl(QStringLiteral("http://127.0.0.1:8080/"))))
+{
+}
+
+QUrl ApiClient::normalizeBaseUrl(const QUrl &url)
+{
+    QUrl normalized = url;
+
+    if (normalized.scheme().isEmpty()) {
+        normalized = QUrl(QStringLiteral("http://") + url.toString());
     }
+
+    if (normalized.host().isEmpty() && !normalized.path().isEmpty()) {
+        normalized = QUrl(QStringLiteral("http://") + normalized.path());
+    }
+
+    if (normalized.scheme().isEmpty()) {
+        normalized.setScheme(QStringLiteral("http"));
+    }
+
+    if (normalized.port() == -1) {
+        normalized.setPort(8080);
+    }
+
+    normalized.setPath(QStringLiteral("/"));
+    return normalized;
 }
 
-ApiClient::ApiClient(QObject* parent)
-        : QObject(parent),
-          baseUrl_(QStringLiteral("http://127.0.0.1:8080/"))
+void ApiClient::setBaseUrl(const QUrl &url)
 {
-}
-
-void ApiClient::setBaseUrl(const QUrl& url)
-{
-    baseUrl_ = url;
+    baseUrl_ = normalizeBaseUrl(url);
 }
 
 QUrl ApiClient::baseUrl() const
@@ -29,23 +53,23 @@ QUrl ApiClient::baseUrl() const
     return baseUrl_;
 }
 
-QUrl ApiClient::makeUrl(const QString& path) const
+QUrl ApiClient::makeUrl(const QString &path) const
 {
     QUrl url = baseUrl_;
     QString cleanPath = path;
     if (cleanPath.startsWith('/')) {
         cleanPath.remove(0, 1);
     }
-    url.setPath("/" + cleanPath);
+    url.setPath('/' + cleanPath);
     return url;
 }
 
 void ApiClient::health()
 {
     QNetworkRequest req(makeUrl("/health"));
-    auto* reply = manager_.get(req);
+    auto *reply = manager_.get(req);
 
-    handleJsonReply(reply, "health", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "health", [this](const QJsonObject &obj) {
         if (obj.value("status").toString() == "ok") {
             emit healthOk();
         } else {
@@ -57,149 +81,121 @@ void ApiClient::health()
 void ApiClient::listPolls()
 {
     QNetworkRequest req(makeUrl("/polls"));
-    auto* reply = manager_.get(req);
+    auto *reply = manager_.get(req);
 
-    handleJsonReply(reply, "listPolls", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "listPolls", [this](const QJsonObject &obj) {
         QList<PollSummary> polls;
         const QJsonArray arr = obj.value("polls").toArray();
         polls.reserve(arr.size());
-
-        for (const QJsonValue& v : arr) {
+        for (const QJsonValue &v : arr) {
             if (v.isObject()) {
                 polls.push_back(parsePollSummary(v.toObject()));
             }
         }
-
         emit pollsListed(polls);
     });
 }
 
-void ApiClient::getPoll(const QString& pollId)
+void ApiClient::getPoll(const QString &pollId)
 {
     QNetworkRequest req(makeUrl(QString("/polls/%1").arg(pollId)));
-    auto* reply = manager_.get(req);
+    auto *reply = manager_.get(req);
 
-    handleJsonReply(reply, "getPoll", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "getPoll", [this](const QJsonObject &obj) {
         emit pollFetched(parsePollDetails(obj));
     });
 }
 
-void ApiClient::createPoll(const QString& title,
-                           const QStringList& candidates,
-                           int tokenCount)
+void ApiClient::createPoll(const QString &title, const QStringList &candidates, int tokenCount)
 {
     QNetworkRequest req(makeUrl("/polls/create"));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QJsonArray candidatesJson;
-    for (const QString& candidate : candidates) {
+    for (const QString &candidate : candidates) {
         candidatesJson.push_back(candidate);
     }
 
-    QJsonObject body{
-            {"title", title},
-            {"candidates", candidatesJson},
-            {"token_count", tokenCount}
-    };
+    QJsonObject body{{"title", title}, {"candidates", candidatesJson}, {"token_count", tokenCount}};
+    auto *reply = manager_.post(req, makeJsonBody(body));
 
-    auto* reply = manager_.post(req, makeJsonBody(body));
-
-    handleJsonReply(reply, "createPoll", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "createPoll", [this](const QJsonObject &obj) {
         emit pollCreated(parseCreatePollResponse(obj));
     });
 }
 
-void ApiClient::issueToken(const QString& pollId, int count)
+void ApiClient::issueToken(const QString &pollId, int count)
 {
     QNetworkRequest req(makeUrl(QString("/polls/%1/issue-token").arg(pollId)));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    QJsonObject body{
-            {"count", count}
-    };
+    QJsonObject body{{"count", count}};
+    auto *reply = manager_.post(req, makeJsonBody(body));
 
-    auto* reply = manager_.post(req, makeJsonBody(body));
-
-    handleJsonReply(reply, "issueToken", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "issueToken", [this](const QJsonObject &obj) {
         emit tokenIssued(parseIssueTokenResponse(obj));
     });
 }
 
-void ApiClient::signBlinded(const QString& pollId,
-                            const QString& token,
-                            const QString& blindedMessage)
+void ApiClient::signBlinded(const QString &pollId, const QString &token, const QString &blindedMessage)
 {
     QNetworkRequest req(makeUrl(QString("/polls/%1/sign").arg(pollId)));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    QJsonObject body{
-            {"token", token},
-            {"blinded_message", blindedMessage}
-    };
+    QJsonObject body{{"token", token}, {"blinded_message", blindedMessage}};
+    auto *reply = manager_.post(req, makeJsonBody(body));
 
-    auto* reply = manager_.post(req, makeJsonBody(body));
-
-    handleJsonReply(reply, "signBlinded", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "signBlinded", [this](const QJsonObject &obj) {
         emit blindedSigned(parseSignResponse(obj));
     });
 }
 
-void ApiClient::submitVote(const QString& pollId,
-                           const QString& ballot,
-                           const QString& signature)
+void ApiClient::submitVote(const QString &pollId, const QString &ballot, const QString &signature)
 {
     QNetworkRequest req(makeUrl(QString("/polls/%1/submit").arg(pollId)));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    QJsonObject body{
-            {"ballot", ballot},
-            {"signature", signature}
-    };
+    QJsonObject body{{"ballot", ballot}, {"signature", signature}};
+    auto *reply = manager_.post(req, makeJsonBody(body));
 
-    auto* reply = manager_.post(req, makeJsonBody(body));
-
-    handleJsonReply(reply, "submitVote", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "submitVote", [this](const QJsonObject &obj) {
         emit voteSubmitted(parseSubmitVoteResponse(obj));
     });
 }
 
-void ApiClient::getResults(const QString& pollId)
+void ApiClient::getResults(const QString &pollId)
 {
     QNetworkRequest req(makeUrl(QString("/polls/%1/results").arg(pollId)));
-    auto* reply = manager_.get(req);
+    auto *reply = manager_.get(req);
 
-    handleJsonReply(reply, "getResults", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "getResults", [this](const QJsonObject &obj) {
         emit resultsReceived(parseResultsResponse(obj));
     });
 }
 
-void ApiClient::closePoll(const QString& pollId)
+void ApiClient::closePoll(const QString &pollId)
 {
     QNetworkRequest req(makeUrl(QString("/polls/%1/close").arg(pollId)));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    auto *reply = manager_.post(req, QByteArray{});
 
-    auto* reply = manager_.post(req, QByteArray{});
-
-    handleJsonReply(reply, "closePoll", [this](const QJsonObject& obj) {
+    handleJsonReply(reply, "closePoll", [this](const QJsonObject &obj) {
         emit pollClosed(parseClosePollResponse(obj));
     });
 }
 
-void ApiClient::handleJsonReply(QNetworkReply* reply,
-                                const QString& where,
-                                const std::function<void(const QJsonObject&)>& onSuccess)
+void ApiClient::handleJsonReply(QNetworkReply *reply,
+                                const QString &where,
+                                const std::function<void(const QJsonObject &)> &onSuccess)
 {
     connect(reply, &QNetworkReply::finished, this, [this, reply, where, onSuccess]() {
-        const int httpStatus =
-                reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-
+        const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         const QByteArray raw = reply->readAll();
         const auto parseResult = QJsonDocument::fromJson(raw);
 
         if (reply->error() != QNetworkReply::NoError) {
-            QString errorCode = "network_error";
+            QString errorCode = QStringLiteral("network_error");
             QString message = reply->errorString();
-
             if (parseResult.isObject()) {
                 const QJsonObject obj = parseResult.object();
                 if (obj.contains("error")) {
@@ -209,7 +205,6 @@ void ApiClient::handleJsonReply(QNetworkReply* reply,
                     message = obj.value("message").toString(message);
                 }
             }
-
             emit requestFailed(where, httpStatus, errorCode, message);
             reply->deleteLater();
             return;
@@ -222,7 +217,6 @@ void ApiClient::handleJsonReply(QNetworkReply* reply,
         }
 
         const QJsonObject obj = parseResult.object();
-
         if (httpStatus >= 400) {
             emit requestFailed(where,
                                httpStatus,
@@ -237,17 +231,17 @@ void ApiClient::handleJsonReply(QNetworkReply* reply,
     });
 }
 
-QStringList ApiClient::jsonArrayToStringList(const QJsonArray& array)
+QStringList ApiClient::jsonArrayToStringList(const QJsonArray &array)
 {
     QStringList out;
     out.reserve(array.size());
-    for (const QJsonValue& v : array) {
+    for (const QJsonValue &v : array) {
         out.push_back(v.toString());
     }
     return out;
 }
 
-PollSummary ApiClient::parsePollSummary(const QJsonObject& obj)
+PollSummary ApiClient::parsePollSummary(const QJsonObject &obj)
 {
     PollSummary p;
     p.pollId = obj.value("poll_id").toString();
@@ -259,7 +253,7 @@ PollSummary ApiClient::parsePollSummary(const QJsonObject& obj)
     return p;
 }
 
-PollDetails ApiClient::parsePollDetails(const QJsonObject& obj)
+PollDetails ApiClient::parsePollDetails(const QJsonObject &obj)
 {
     PollDetails p;
     p.pollId = obj.value("poll_id").toString();
@@ -275,7 +269,7 @@ PollDetails ApiClient::parsePollDetails(const QJsonObject& obj)
     return p;
 }
 
-CreatePollResponse ApiClient::parseCreatePollResponse(const QJsonObject& obj)
+CreatePollResponse ApiClient::parseCreatePollResponse(const QJsonObject &obj)
 {
     CreatePollResponse r;
     r.pollId = obj.value("poll_id").toString();
@@ -289,7 +283,7 @@ CreatePollResponse ApiClient::parseCreatePollResponse(const QJsonObject& obj)
     return r;
 }
 
-IssueTokenResponse ApiClient::parseIssueTokenResponse(const QJsonObject& obj)
+IssueTokenResponse ApiClient::parseIssueTokenResponse(const QJsonObject &obj)
 {
     IssueTokenResponse r;
     r.pollId = obj.value("poll_id").toString();
@@ -298,7 +292,7 @@ IssueTokenResponse ApiClient::parseIssueTokenResponse(const QJsonObject& obj)
     return r;
 }
 
-SignResponse ApiClient::parseSignResponse(const QJsonObject& obj)
+SignResponse ApiClient::parseSignResponse(const QJsonObject &obj)
 {
     SignResponse r;
     r.pollId = obj.value("poll_id").toString();
@@ -306,7 +300,7 @@ SignResponse ApiClient::parseSignResponse(const QJsonObject& obj)
     return r;
 }
 
-SubmitVoteResponse ApiClient::parseSubmitVoteResponse(const QJsonObject& obj)
+SubmitVoteResponse ApiClient::parseSubmitVoteResponse(const QJsonObject &obj)
 {
     SubmitVoteResponse r;
     r.pollId = obj.value("poll_id").toString();
@@ -316,7 +310,7 @@ SubmitVoteResponse ApiClient::parseSubmitVoteResponse(const QJsonObject& obj)
     return r;
 }
 
-ResultsResponse ApiClient::parseResultsResponse(const QJsonObject& obj)
+ResultsResponse ApiClient::parseResultsResponse(const QJsonObject &obj)
 {
     ResultsResponse r;
     r.pollId = obj.value("poll_id").toString();
@@ -327,7 +321,7 @@ ResultsResponse ApiClient::parseResultsResponse(const QJsonObject& obj)
     return r;
 }
 
-ClosePollResponse ApiClient::parseClosePollResponse(const QJsonObject& obj)
+ClosePollResponse ApiClient::parseClosePollResponse(const QJsonObject &obj)
 {
     ClosePollResponse r;
     r.pollId = obj.value("poll_id").toString();

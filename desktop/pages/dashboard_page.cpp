@@ -64,14 +64,55 @@ DashboardPage::DashboardPage(QWidget* parent)
 
     setOkState("Ready");
     appendLog("Dashboard initialized.");
-    api_->listPolls();
+    refreshForCurrentServer(true);
 }
 
 void DashboardPage::setServerUrl(const QString& url)
 {
     api_->setBaseUrl(QUrl(url));
-    serverValueLabel_->setText(url);
-    appendLog("Server URL updated: " + url);
+    const QString normalized = api_->baseUrl().toString(QUrl::FullyDecoded);
+    serverValueLabel_->setText(normalized);
+    appendLog("Server URL updated: " + normalized);
+    refreshForCurrentServer(true);
+}
+
+QString DashboardPage::serverUrl() const
+{
+    return api_->baseUrl().toString(QUrl::FullyDecoded);
+}
+
+void DashboardPage::refreshForCurrentServer(bool withHealthCheck)
+{
+    currentPoll_ = PollDetails{};
+    currentPollId_.clear();
+    currentPublicKey_.clear();
+    currentToken_.clear();
+    currentBallot_.clear();
+    currentBlinded_.clear();
+    currentInverse_.clear();
+    currentBlindSignature_.clear();
+
+    pollsCombo_->blockSignals(true);
+    pollsCombo_->clear();
+    pollsCombo_->blockSignals(false);
+    candidateCombo_->clear();
+
+    publicKeyEdit_->clear();
+    tokenEdit_->clear();
+    ballotEdit_->clear();
+    blindedEdit_->clear();
+    inverseEdit_->clear();
+    blindSignatureEdit_->clear();
+    finalSignatureEdit_->clear();
+
+    updatePollInfoUi();
+    setBusyState(withHealthCheck ? "Checking server..." : "Loading polls...");
+
+    if (withHealthCheck) {
+        api_->health();
+    } else {
+        api_->listPolls();
+    }
 }
 
 void DashboardPage::setupUi()
@@ -89,7 +130,7 @@ void DashboardPage::setupUi()
 
     auto* serverChip = new QLabel("Server:");
     serverChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
-    serverValueLabel_ = new QLabel("http://127.0.0.1:8080/");
+    serverValueLabel_ = new QLabel(api_->baseUrl().toString(QUrl::FullyDecoded));
     serverValueLabel_->setStyleSheet(
             "padding: 6px 10px; background: #2d2d2d; border-radius: 8px;"
     );
@@ -316,7 +357,8 @@ void DashboardPage::setupConnections()
 
     connect(api_, &ApiClient::healthOk, this, [this]() {
         appendLog("Server health OK.");
-        setOkState("Server online");
+        setBusyState("Loading polls...");
+        api_->listPolls();
     });
 
     connect(api_, &ApiClient::pollsListed, this, [this](const QList<PollSummary>& polls) {

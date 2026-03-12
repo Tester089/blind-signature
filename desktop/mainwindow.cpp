@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include <QSettings>
 #include <QTabWidget>
 
 #include "pages/dashboard_page.h"
@@ -7,11 +8,11 @@
 #include "pages/settings_page.h"
 
 MainWindow::MainWindow(QWidget* parent)
-        : QMainWindow(parent),
-          tabs_(nullptr),
-          dashboardPage_(nullptr),
-          verifyPage_(nullptr),
-          settingsPage_(nullptr)
+    : QMainWindow(parent),
+      tabs_(nullptr),
+      dashboardPage_(nullptr),
+      verifyPage_(nullptr),
+      settingsPage_(nullptr)
 {
     setupUi();
     setupConnections();
@@ -33,6 +34,12 @@ void MainWindow::setupUi()
     tabs_->addTab(settingsPage_, "Settings");
 
     setCentralWidget(tabs_);
+
+    QSettings settings;
+    const QString serverUrl = settings.value(QStringLiteral("server/url"),
+                                             QStringLiteral("http://127.0.0.1:8080/")).toString();
+    settingsPage_->setServerUrl(serverUrl);
+    dashboardPage_->setServerUrl(serverUrl);
 }
 
 void MainWindow::setupConnections()
@@ -42,7 +49,10 @@ void MainWindow::setupConnections()
                 Q_UNUSED(darkTheme);
                 Q_UNUSED(fakeDelay);
 
+                QSettings settings;
+                settings.setValue(QStringLiteral("server/url"), serverUrl);
+
                 dashboardPage_->setServerUrl(serverUrl);
-                settingsPage_->setStatus("Status: Settings saved");
+                settingsPage_->setStatus(QStringLiteral("Status: Settings saved"));
             });
 }

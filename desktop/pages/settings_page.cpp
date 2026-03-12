@@ -29,7 +29,8 @@ SettingsPage::SettingsPage(QWidget* parent)
     auto* form = new QFormLayout(box);
 
     serverUrlEdit_ = new QLineEdit;
-    serverUrlEdit_->setPlaceholderText("http://127.0.0.1:8080");
+    serverUrlEdit_->setPlaceholderText("http://127.0.0.1:8080/");
+    serverUrlEdit_->setText("http://127.0.0.1:8080/");
 
     darkThemeCheck_ = new QCheckBox("Enable dark theme");
     darkThemeCheck_->setChecked(true);

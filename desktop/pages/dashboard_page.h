@@ -9,23 +9,21 @@ class QComboBox;
 class QPushButton;
 class QLabel;
 class QLineEdit;
-class QTextEdit;
 class QPlainTextEdit;
 class QCheckBox;
 class QSpinBox;
-class QFrame;
-
 class ConnectButton;
 class StatusBadge;
 
 class DashboardPage : public QWidget
 {
-Q_OBJECT
+    Q_OBJECT
 
 public:
     explicit DashboardPage(QWidget* parent = nullptr);
 
     void setServerUrl(const QString& url);
+    QString serverUrl() const;
 
 private:
     void setupUi();
@@ -38,6 +36,7 @@ private:
     void updatePollInfoUi();
     void startVoteFlow();
     QString generateBallotId() const;
+    void refreshForCurrentServer(bool withHealthCheck = true);
 
 private:
     ApiClient* api_;
@@ -52,11 +51,9 @@ private:
 
     PollDetails currentPoll_;
 
-    // top bar
     QLabel* serverValueLabel_;
     QLabel* modeValueLabel_;
 
-    // left card
     QComboBox* pollsCombo_;
     QPushButton* refreshPollsButton_;
     QPushButton* createPollButton_;
@@ -65,17 +62,14 @@ private:
     QLabel* pollStatusValueLabel_;
     QLabel* pollVotesValueLabel_;
 
-    // vote card
     QComboBox* candidateCombo_;
     QCheckBox* delayCheckBox_;
     QSpinBox* minDelaySpin_;
     QSpinBox* maxDelaySpin_;
 
-    // center area
     ConnectButton* connectButton_;
     StatusBadge* statusBadge_;
 
-    // advanced
     QPushButton* advancedButton_;
     QWidget* advancedPanel_;
     QLineEdit* publicKeyEdit_;
