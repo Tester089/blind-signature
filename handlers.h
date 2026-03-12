@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __cplusplus // for some reason by default it's defining like C 💀💀💀
+#ifdef __cplusplus
 
 #include "poll.h"
 #include "json_utils.h"

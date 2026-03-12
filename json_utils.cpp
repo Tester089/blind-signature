@@ -28,7 +28,7 @@ JsonContext ParseJsonObject(const httplib::Request &req) {
 
 bool EnsureJsonOk(const JsonContext &ctx, httplib::Response &res) {
     if (!ctx.ok) {
-        ReplyError(res, 400, "bad_json", "Expected a JSON object.");
+        ReplyError(res, 400, "bad_json", "Body must be a JSON object.");
         return false;
     }
     return true;
@@ -49,7 +49,7 @@ void ReplyError(httplib::Response &res, int status, const std::string &code, con
 Poll *FindPollLocked(const std::string &poll_id, httplib::Response &res) {
     auto it = g_polls.find(poll_id);
     if (it == g_polls.end()) {
-        ReplyError(res, 404, "not_found", "No such poll.");
+        ReplyError(res, 404, "not_found", "Poll not found.");
         return nullptr;
     }
     return &it->second;
@@ -170,4 +170,3 @@ std::vector<std::string> GetCandidatesField(const httplib::Request &req, const j
 
     return {};
 }
-
