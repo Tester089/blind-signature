@@ -1,1 +1,1 @@
-miller_rabin, gen_prime, hash_msg and make it great again
+miller_rabin, KeyGen, Blind, BlindSign, Finalise, Verify, TryVerify and make it great again

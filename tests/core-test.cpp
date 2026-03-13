@@ -19,10 +19,24 @@ TEST(BigIntTest, ModpowBasic) {
   EXPECT_EQ(to_hex(res), to_hex(BigInt(1024 % 1000)));
 }
 
-// modinv broken — skipped until ext_gcd fixed
-// TEST(BigIntTest, ModinvBasic) {
-//     BigInt a(3), m(7);
-//     BigInt inv = modinv(a, m);
-//     BigInt prod = bigmod(mul(a, inv), m);
-//     EXPECT_TRUE(prod.is_one());
-// }
+TEST(BigIntTest, ModinvBasic) {
+  BigInt a(3), m(7);
+  BigInt inv = modinv(a, m);
+  BigInt prod = bigmod(mul(a, inv), m);
+  EXPECT_TRUE(prod.is_one());
+}
+
+TEST(PublicKeyTest, FromStringNulloptOnBad) {
+  auto res = PublicKey::fromString("notvalidatall");
+  EXPECT_FALSE(res.has_value());
+}
+
+TEST(ExceptionTest, ParseExceptionOnBadKey) {
+  EXPECT_THROW(
+      ([](){
+          auto pk_opt = PublicKey::fromString("bad");
+          if (!pk_opt.has_value()) throw ParseException("cannot parse public key: bad");
+      })(),
+      ParseException
+  );
+}
