@@ -2,7 +2,7 @@
 
 #ifdef __cplusplus
 
-#include "poll.h"
+#include "polls.h"
 #include "json_utils.h"
 
 #include <mutex>
