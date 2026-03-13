@@ -6,11 +6,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(BS_USE_POSTGRES "Enable PostgreSQL persistence" ON)
+
 add_executable(blind_server
         main.cpp
         handlers.cpp
         json_utils.cpp
-        poll.cpp
+        polls.cpp
+        db.cpp
         core/core.cpp
 )
 
@@ -33,6 +36,15 @@ if (WIN32)
     target_link_libraries(blind_server PRIVATE ws2_32)
 endif()
 
+if (BS_USE_POSTGRES)
+    find_package(PostgreSQL REQUIRED)
+    target_include_directories(blind_server PRIVATE ${PostgreSQL_INCLUDE_DIRS})
+    target_link_libraries(blind_server PRIVATE ${PostgreSQL_LIBRARIES})
+    target_compile_definitions(blind_server PRIVATE BS_USE_POSTGRES=1)
+else()
+    target_compile_definitions(blind_server PRIVATE BS_USE_POSTGRES=0)
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -49,7 +61,7 @@ enable_testing()
 add_executable(blind_tests
         tests.cpp
         json_utils.cpp
-        poll.cpp
+        polls.cpp
 )
 
 target_include_directories(blind_tests PRIVATE

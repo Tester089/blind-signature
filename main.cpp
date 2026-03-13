@@ -1,8 +1,14 @@
 #include "handlers.h"
+#include "db.h"
 
 #include <iostream>
 
 int main() {
+    std::string db_error;
+    if (DbEnabled() && !DbReady(db_error)) {
+        std::cerr << "PostgreSQL init failed: " << db_error << '\n';
+    }
+
     httplib::Server server;
     RegisterHandlers(server);
 

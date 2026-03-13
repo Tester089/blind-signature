@@ -1,6 +1,7 @@
 #include "handlers.h"
 
 #include "core.h"
+#include "db.h"
 
 #include <iostream>
 
@@ -93,6 +94,18 @@ void RegisterHandlers(httplib::Server &server) {
         int count = 1; if (auto parsed_count = GetIntField(req, ctx.obj, "count")) count = *parsed_count;
         std::string username; if (auto u = GetStringField(req, ctx.obj, "username")) username = Trim(*u);
         if (username.empty()) { ReplyError(res, 400, "bad_request", "Field 'username' is required."); return; }
+        auto password_field = GetStringField(req, ctx.obj, "password");
+        if (!password_field || password_field->empty()) { ReplyError(res, 400, "bad_request", "Field 'password' is required."); return; }
+        const std::string password = *password_field;
+        if (DbEnabled()) {
+            std::string db_error;
+            bool exists = false;
+            if (!DbUserExists(username, exists, db_error)) { ReplyError(res, 500, "db_error", "Failed to check user in database."); return; }
+            if (!exists) { ReplyError(res, 403, "unknown_user", "User is not registered."); return; }
+            bool valid = false;
+            if (!DbCheckUserPassword(username, password, valid, db_error)) { ReplyError(res, 500, "db_error", "Failed to check user password."); return; }
+            if (!valid) { ReplyError(res, 403, "bad_password", "Password is incorrect."); return; }
+        }
         if (count < 1 || count > kMaxTokenCount) { ReplyError(res, 400, "bad_request", "count must be between 1 and 100000."); return; }
         std::vector<std::string> tokens;
         {
@@ -136,7 +149,18 @@ void RegisterHandlers(httplib::Server &server) {
         auto signature = GetStringField(req, ctx.obj, "signature"); if (!signature || signature->empty()) { ReplyError(res, 400, "bad_request", "Field 'signature' is required."); return; }
         auto token = GetStringField(req, ctx.obj, "token"); if (!token || token->empty()) { ReplyError(res, 400, "bad_request", "Field 'token' is required."); return; }
         auto usernameField = GetStringField(req, ctx.obj, "username"); if (!usernameField || Trim(*usernameField).empty()) { ReplyError(res, 400, "bad_request", "Field 'username' is required."); return; }
+        auto passwordField = GetStringField(req, ctx.obj, "password"); if (!passwordField || passwordField->empty()) { ReplyError(res, 400, "bad_request", "Field 'password' is required."); return; }
         std::string username = Trim(*usernameField);
+        const std::string password = *passwordField;
+        if (DbEnabled()) {
+            std::string db_error;
+            bool exists = false;
+            if (!DbUserExists(username, exists, db_error)) { ReplyError(res, 500, "db_error", "Failed to check user in database."); return; }
+            if (!exists) { ReplyError(res, 403, "unknown_user", "User is not registered."); return; }
+            bool valid = false;
+            if (!DbCheckUserPassword(username, password, valid, db_error)) { ReplyError(res, 500, "db_error", "Failed to check user password."); return; }
+            if (!valid) { ReplyError(res, 403, "bad_password", "Password is incorrect."); return; }
+        }
         std::string candidate, ballot_id;
         if (!ParseBallot(*ballot, candidate, ballot_id)) { ReplyError(res, 400, "bad_request", "Ballot must be in format 'Candidate|ballot_id'."); return; }
         int total_votes = 0;
@@ -153,6 +177,10 @@ void RegisterHandlers(httplib::Server &server) {
             if (tokIt == poll->issued_token_owner.end() || tokIt->second != username) { ReplyError(res, 403, "invalid_token_owner", "Token does not belong to this user."); return; }
             if (poll->submitted_tokens.count(*token) != 0) { ReplyError(res, 409, "token_already_submitted", "Token was already used for submit."); return; }
             if (!Verify(poll->public_key, *ballot, *signature)) { ReplyError(res, 403, "invalid_signature", "Signature verification failed."); return; }
+            if (DbEnabled()) {
+                std::string db_error;
+                if (!DbRecordVote(poll_id, candidate, username, db_error)) { ReplyError(res, 500, "db_error", "Failed to write vote to database."); return; }
+            }
             poll->used_ballot_ids.insert(ballot_id); poll->votes[candidate] += 1; poll->voted_usernames.insert(username); poll->submitted_tokens.insert(*token); total_votes = CountTotalVotes(*poll);
         }
         json root; root["poll_id"] = poll_id; root["status"] = "accepted"; root["candidate"] = candidate; root["total_votes"] = total_votes; root["username"] = username; ReplyJson(res, 200, root);
@@ -173,3 +201,5 @@ void RegisterHandlers(httplib::Server &server) {
         poll->is_open = false; json root; root["poll_id"] = poll_id; root["status"] = "closed"; ReplyJson(res, 200, root);
     });
 }
+
+
