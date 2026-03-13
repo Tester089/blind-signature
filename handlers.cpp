@@ -21,6 +21,34 @@ void RegisterHandlers(httplib::Server &server) {
     });
     std::cout << "  " << std::left << std::setw(6) << "GET" << " /health" << std::endl;
 
+    server.Post("/users", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
+        auto ctx = ParseJsonObject(req);
+        if (!EnsureJsonOk(ctx, res)) return;
+        auto usernameField = GetStringField(req, ctx.obj, "username");
+        if (!usernameField || Trim(*usernameField).empty()) { ReplyError(res, 400, "bad_request", "Field 'username' is required."); return; }
+        auto passwordField = GetStringField(req, ctx.obj, "password");
+        if (!passwordField || passwordField->empty()) { ReplyError(res, 400, "bad_request", "Field 'password' is required."); return; }
+        std::string username = Trim(*usernameField);
+        std::string db_error;
+        if (!DbReady(db_error)) { ReplyError(res, 503, "db_unavailable", "Database is not ready."); return; }
+        bool created = false;
+        if (!DbCreateUser(username, *passwordField, created, db_error)) { ReplyError(res, 500, "db_error", "Failed to create user."); return; }
+        if (!created) { ReplyError(res, 409, "user_exists", "User already exists."); return; }
+        json root; root["username"] = username; root["status"] = "created"; ReplyJson(res, 201, root);
+    });
+    std::cout << "  " << std::left << std::setw(6) << "POST" << " /users" << std::endl;
+
+    server.Get("/users", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
+        std::string db_error;
+        if (!DbReady(db_error)) { ReplyError(res, 503, "db_unavailable", "Database is not ready."); return; }
+        std::vector<std::string> users;
+        if (!DbListUsers(users, db_error)) { ReplyError(res, 500, "db_error", "Failed to load users."); return; }
+        json root; root["users"] = BuildStringArray(users); ReplyJson(res, 200, root);
+    });
+    std::cout << "  " << std::left << std::setw(6) << "GET" << " /users" << std::endl;
+
     server.Post("/polls/create", [](const httplib::Request &req, httplib::Response &res) {
         std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         auto ctx = ParseJsonObject(req);

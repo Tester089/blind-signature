@@ -191,6 +191,85 @@ bool DbCheckUserPassword(const std::string &username, const std::string &passwor
     return true;
 }
 
+
+bool DbCreateUser(const std::string &username, const std::string &password, bool &created, std::string &error) {
+    created = false;
+    if (!DbReady(error)) {
+        return false;
+    }
+
+    PGconn *conn = Connect(error);
+    if (!conn) {
+        return false;
+    }
+
+    const char *params[2] = { username.c_str(), password.c_str() };
+    PGresult *res = PQexecParams(conn,
+                                 "INSERT INTO users (username, password_hash) "
+                                 "VALUES ($1, crypt($2, gen_salt('bf'))) "
+                                 "ON CONFLICT (username) DO NOTHING",
+                                 2,
+                                 nullptr,
+                                 params,
+                                 nullptr,
+                                 nullptr,
+                                 0);
+    if (!res) {
+        error = PQerrorMessage(conn);
+        PQfinish(conn);
+        return false;
+    }
+
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        error = PQerrorMessage(conn);
+        PQclear(res);
+        PQfinish(conn);
+        return false;
+    }
+
+    const char *rows = PQcmdTuples(res);
+    created = rows && std::atoi(rows) > 0;
+    PQclear(res);
+    PQfinish(conn);
+    return true;
+}
+
+bool DbListUsers(std::vector<std::string> &users, std::string &error) {
+    users.clear();
+    if (!DbReady(error)) {
+        return false;
+    }
+
+    PGconn *conn = Connect(error);
+    if (!conn) {
+        return false;
+    }
+
+    PGresult *res = PQexec(conn, "SELECT username FROM users ORDER BY username");
+    if (!res) {
+        error = PQerrorMessage(conn);
+        PQfinish(conn);
+        return false;
+    }
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        error = PQerrorMessage(conn);
+        PQclear(res);
+        PQfinish(conn);
+        return false;
+    }
+
+    int rows = PQntuples(res);
+    users.reserve(rows);
+    for (int i = 0; i < rows; ++i) {
+        char *value = PQgetvalue(res, i, 0);
+        if (value) users.emplace_back(value);
+    }
+
+    PQclear(res);
+    PQfinish(conn);
+    return true;
+}
 bool DbRecordVote(const std::string &poll_id, const std::string &candidate, const std::string &username, std::string &error) {
     (void)username;
     if (!DbReady(error)) {

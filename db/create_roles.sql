@@ -34,7 +34,7 @@ END $$;
 
 GRANT USAGE ON SCHEMA public TO blind_app, blind_admin;
 
-GRANT SELECT ON TABLE users TO blind_app;
+GRANT SELECT, INSERT ON TABLE users TO blind_app;
 GRANT INSERT, UPDATE ON TABLE poll_results TO blind_app;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE users TO blind_admin;
