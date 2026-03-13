@@ -15,7 +15,7 @@ set(APP_ICON_ICO ${CMAKE_CURRENT_SOURCE_DIR}/assets/app.ico)
 set(APP_ICON_ICNS ${CMAKE_CURRENT_SOURCE_DIR}/assets/app.icns)
 
 if (WIN32)
-    set(APP_ICON_RESOURCE ${CMAKE_CURRENT_SOURCE_DIR}/assets/app.rc)
+    set(APP_ICON_RESOURCE app.rc)
 endif()
 
 qt_add_executable(blind_desktop
