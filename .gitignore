@@ -1,1 +1,5 @@
 ﻿testemail.cpp
+build/
+.vscode
+.env
+add_user.ps1

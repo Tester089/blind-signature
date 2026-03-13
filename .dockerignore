@@ -1,0 +1,10 @@
+.git
+.gitignore
+build
+*.md
+Dockerfile
+.dockerignore
+tests.cpp
+core/core_usage_example.cpp
+CMakeLists.txt
+.env

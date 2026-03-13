@@ -1,8 +1,9 @@
 #include "handlers.h"
-
-#include "core.h"
+#include "json_utils.h"
+#include "core/core.h"
 #include "db.h"
 
+#include <iomanip>
 #include <iostream>
 
 static json BuildAllowedArray(const Poll &poll) {
@@ -12,11 +13,16 @@ static json BuildAllowedArray(const Poll &poll) {
 }
 
 void RegisterHandlers(httplib::Server &server) {
-    server.Get("/health", [](const httplib::Request &, httplib::Response &res) {
+    std::cout << "Registering handlers" << std::endl;
+
+    server.Get("/health", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         json root; root["status"] = "ok"; ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "GET" << " /health" << std::endl;
 
     server.Post("/polls/create", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         auto ctx = ParseJsonObject(req);
         if (!EnsureJsonOk(ctx, res)) return;
         auto candidates = GetCandidatesField(req, ctx.obj);
@@ -61,8 +67,10 @@ void RegisterHandlers(httplib::Server &server) {
         root["initial_tokens"] = BuildStringArray(initial_tokens); root["owner_username"] = poll.owner_username; root["allowed_usernames"] = BuildAllowedArray(poll);
         ReplyJson(res, 201, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "POST" << " /polls/create" << std::endl;
 
-    server.Get("/polls", [](const httplib::Request &, httplib::Response &res) {
+    server.Get("/polls", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         json polls = json::array();
         std::lock_guard<std::mutex> lock(g_polls_mutex);
         for (const auto &[poll_id, poll] : g_polls) {
@@ -74,8 +82,10 @@ void RegisterHandlers(httplib::Server &server) {
         }
         json root; root["polls"] = polls; ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "GET" << " /polls" << std::endl;
 
     server.Get(R"(/polls/(poll_[A-Za-z0-9]+))", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         const std::string poll_id = req.matches[1].str();
         std::lock_guard<std::mutex> lock(g_polls_mutex);
         Poll *poll_ptr = FindPollLocked(poll_id, res); if (!poll_ptr) return;
@@ -87,8 +97,10 @@ void RegisterHandlers(httplib::Server &server) {
         root["owner_username"] = poll.owner_username; root["allowed_usernames"] = BuildAllowedArray(poll); root["voted_usernames_count"] = (int)poll.voted_usernames.size();
         ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "GET" << " /polls/{poll_id}" << std::endl;
 
     server.Post(R"(/polls/(poll_[A-Za-z0-9]+)/issue-token)", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         auto ctx = ParseJsonObject(req); if (!EnsureJsonOk(ctx, res)) return;
         const std::string poll_id = req.matches[1].str();
         int count = 1; if (auto parsed_count = GetIntField(req, ctx.obj, "count")) count = *parsed_count;
@@ -121,8 +133,10 @@ void RegisterHandlers(httplib::Server &server) {
         }
         json root; root["poll_id"] = poll_id; root["count"] = (int)tokens.size(); root["tokens"] = BuildStringArray(tokens); root["username"] = username; ReplyJson(res, 201, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "POST" << " /polls/{poll_id}/issue-token" << std::endl;
 
     server.Post(R"(/polls/(poll_[A-Za-z0-9]+)/sign)", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         auto ctx = ParseJsonObject(req); if (!EnsureJsonOk(ctx, res)) return;
         const std::string poll_id = req.matches[1].str();
         auto token = GetStringField(req, ctx.obj, "token"); if (!token || Trim(*token).empty()) { ReplyError(res, 400, "bad_request", "Field 'token' is required."); return; }
@@ -141,8 +155,10 @@ void RegisterHandlers(httplib::Server &server) {
         if (blind_signature.empty()) { ReplyError(res, 500, "internal_error", "BlindSign returned empty signature."); return; }
         json root; root["poll_id"] = poll_id; root["blind_signature"] = blind_signature; ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "POST" << " /polls/{poll_id}/sign" << std::endl;
 
     server.Post(R"(/polls/(poll_[A-Za-z0-9]+)/submit)", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         auto ctx = ParseJsonObject(req); if (!EnsureJsonOk(ctx, res)) return;
         const std::string poll_id = req.matches[1].str();
         auto ballot = GetStringField(req, ctx.obj, "ballot"); if (!ballot || ballot->empty()) { ReplyError(res, 400, "bad_request", "Field 'ballot' is required."); return; }
@@ -185,21 +201,26 @@ void RegisterHandlers(httplib::Server &server) {
         }
         json root; root["poll_id"] = poll_id; root["status"] = "accepted"; root["candidate"] = candidate; root["total_votes"] = total_votes; root["username"] = username; ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "POST" << " /polls/{poll_id}/submit" << std::endl;
 
     server.Get(R"(/polls/(poll_[A-Za-z0-9]+)/results)", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         const std::string poll_id = req.matches[1].str();
         std::lock_guard<std::mutex> lock(g_polls_mutex);
         Poll *poll_ptr = FindPollLocked(poll_id, res); if (!poll_ptr) return;
         const Poll &poll = *poll_ptr; json root; root["poll_id"] = poll.id; root["title"] = poll.title; root["is_open"] = poll.is_open; root["total_votes"] = CountTotalVotes(poll); root["results"] = BuildResultsArray(poll); ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "GET" << " /polls/{poll_id}/results" << std::endl;
 
     server.Post(R"(/polls/(poll_[A-Za-z0-9]+)/close)", [](const httplib::Request &req, httplib::Response &res) {
+        std::cout << "  " << std::left << std::setw(6) << req.method << " " << req.path << std::endl;
         auto ctx = ParseJsonObject(req); if (!EnsureJsonOk(ctx, res)) return; const std::string poll_id = req.matches[1].str();
         std::string username; if (auto u = GetStringField(req, ctx.obj, "username")) username = Trim(*u);
         std::lock_guard<std::mutex> lock(g_polls_mutex); Poll *poll = FindPollLocked(poll_id, res); if (!poll) return;
         if (!poll->owner_username.empty() && poll->owner_username != username) { ReplyError(res, 403, "forbidden", "Only the poll owner can close this poll."); return; }
         poll->is_open = false; json root; root["poll_id"] = poll_id; root["status"] = "closed"; ReplyJson(res, 200, root);
     });
+    std::cout << "  " << std::left << std::setw(6) << "POST" << " /polls/{poll_id}/close" << std::endl;
 }
 
 

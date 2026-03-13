@@ -3,13 +3,12 @@
 #include <cstdlib>
 #include <mutex>
 
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
 #include <libpq-fe.h>
-#endif
 
-namespace {
+#include <iostream>
 
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
+// namespace {
+
 std::once_flag g_init_flag;
 bool g_enabled = false;
 bool g_ready = false;
@@ -43,6 +42,7 @@ bool Exec(PGconn *conn, const char *sql, std::string &error) {
 
 void InitOnce() {
     const char *env = std::getenv("BS_DB_CONN");
+    std::cout << "BS_DB_CONN: " << (env ? env : "null") << std::endl;
     if (!env || !*env) {
         g_enabled = false;
         g_ready = false;
@@ -94,21 +94,13 @@ void InitOnce() {
     PQfinish(conn);
     g_ready = true;
 }
-#endif
-
-}
 
 bool DbEnabled() {
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
     std::call_once(g_init_flag, InitOnce);
     return g_enabled;
-#else
-    return false;
-#endif
 }
 
 bool DbReady(std::string &error) {
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
     std::call_once(g_init_flag, InitOnce);
     if (!g_enabled) {
         error = "PostgreSQL is disabled (BS_DB_CONN is not set).";
@@ -119,14 +111,9 @@ bool DbReady(std::string &error) {
         return false;
     }
     return true;
-#else
-    (void)error;
-    return false;
-#endif
 }
 
 bool DbUserExists(const std::string &username, bool &exists, std::string &error) {
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
     exists = false;
     if (!DbReady(error)) {
         return false;
@@ -163,16 +150,9 @@ bool DbUserExists(const std::string &username, bool &exists, std::string &error)
     PQclear(res);
     PQfinish(conn);
     return true;
-#else
-    (void)username;
-    exists = true;
-    (void)error;
-    return true;
-#endif
 }
 
 bool DbCheckUserPassword(const std::string &username, const std::string &password, bool &valid, std::string &error) {
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
     valid = false;
     if (!DbReady(error)) {
         return false;
@@ -209,17 +189,9 @@ bool DbCheckUserPassword(const std::string &username, const std::string &passwor
     PQclear(res);
     PQfinish(conn);
     return true;
-#else
-    (void)username;
-    (void)password;
-    valid = true;
-    (void)error;
-    return true;
-#endif
 }
 
 bool DbRecordVote(const std::string &poll_id, const std::string &candidate, const std::string &username, std::string &error) {
-#if defined(BS_USE_POSTGRES) && BS_USE_POSTGRES
     (void)username;
     if (!DbReady(error)) {
         return false;
@@ -258,11 +230,4 @@ bool DbRecordVote(const std::string &poll_id, const std::string &candidate, cons
     PQclear(res);
     PQfinish(conn);
     return true;
-#else
-    (void)poll_id;
-    (void)candidate;
-    (void)username;
-    (void)error;
-    return true;
-#endif
 }

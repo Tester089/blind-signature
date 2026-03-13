@@ -1,0 +1,12 @@
+services:
+  blind_server:
+    image: docker.io/bladerunner2020/bsignature:latest
+    build: .
+    platform: linux/amd64
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      BS_DB_CONN: ${BS_DB_CONN:-postgresql://postgres:postgres@postgres:5432/bsignature}
+    restart: unless-stopped
