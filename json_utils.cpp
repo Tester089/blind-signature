@@ -41,8 +41,8 @@ void ReplyJson(httplib::Response &res, int status, const json &value) {
 
 void ReplyError(httplib::Response &res, int status, const std::string &code, const std::string &message) {
     json root;
-    root["error"]["code"] = code;
-    root["error"]["message"] = message;
+    root["error"] = code;
+    root["message"] = message;
     ReplyJson(res, status, root);
 }
 
@@ -55,118 +55,73 @@ Poll *FindPollLocked(const std::string &poll_id, httplib::Response &res) {
     return &it->second;
 }
 
-std::optional<std::string> GetStringField(
-    const httplib::Request &req,
-    const json *obj,
-    const std::string &field
-) {
+std::optional<std::string> GetStringField(const httplib::Request &req, const json *obj, const std::string &field) {
     (void)req;
-    if (!obj || !obj->is_object()) {
-        return std::nullopt;
-    }
+    if (!obj || !obj->is_object()) return std::nullopt;
     auto it = obj->find(field);
-    if (it == obj->end()) {
-        return std::nullopt;
-    }
+    if (it == obj->end()) return std::nullopt;
+    if (it->is_string()) return it->get<std::string>();
+    return std::nullopt;
+}
+
+std::optional<int> GetIntField(const httplib::Request &req, const json *obj, const std::string &field) {
+    (void)req;
+    if (!obj || !obj->is_object()) return std::nullopt;
+    auto it = obj->find(field);
+    if (it == obj->end()) return std::nullopt;
+    if (it->is_number_integer()) return it->get<int>();
+    if (it->is_number()) return static_cast<int>(it->get<double>());
     if (it->is_string()) {
-        return it->get<std::string>();
+        try { return std::stoi(it->get<std::string>()); } catch (...) { return std::nullopt; }
     }
     return std::nullopt;
 }
 
-std::optional<int> GetIntField(
-    const httplib::Request &req,
-    const json *obj,
-    const std::string &field
-) {
-    (void)req;
-    if (!obj || !obj->is_object()) {
-        return std::nullopt;
-    }
-    auto it = obj->find(field);
-    if (it == obj->end()) {
-        return std::nullopt;
-    }
-    if (it->is_number_integer()) {
-        return it->get<int>();
-    }
-    if (it->is_number()) {
-        return static_cast<int>(it->get<double>());
-    }
-    if (it->is_string()) {
-        try {
-            return std::stoi(it->get<std::string>());
-        } catch (...) {
-            return std::nullopt;
-        }
-    }
-    return std::nullopt;
-}
-
-static std::vector<std::string> SplitCandidates(const std::string &input) {
+static std::vector<std::string> SplitStringList(const std::string &input) {
     std::vector<std::string> out;
     std::string token;
     char separator = '|';
-    if (input.find('|') == std::string::npos && input.find(',') != std::string::npos) {
-        separator = ',';
-    }
-
+    if (input.find('|') == std::string::npos && input.find(',') != std::string::npos) separator = ',';
     std::stringstream ss(input);
     while (std::getline(ss, token, separator)) {
         token = Trim(token);
-        if (!token.empty()) {
-            out.push_back(token);
-        }
+        if (!token.empty()) out.push_back(token);
     }
-
     std::unordered_set<std::string> seen;
     std::vector<std::string> unique_out;
     unique_out.reserve(out.size());
-    for (const auto &candidate : out) {
-        if (seen.insert(candidate).second) {
-            unique_out.push_back(candidate);
-        }
+    for (const auto &value : out) {
+        if (seen.insert(value).second) unique_out.push_back(value);
     }
     return unique_out;
 }
 
 std::vector<std::string> GetCandidatesField(const httplib::Request &req, const json *obj) {
+    return GetStringArrayField(req, obj, "candidates");
+}
+
+std::vector<std::string> GetStringArrayField(const httplib::Request &req, const json *obj, const std::string &field) {
     (void)req;
-    if (!obj || !obj->is_object()) {
-        return {};
-    }
-
-    auto it = obj->find("candidates");
-    if (it == obj->end()) {
-        return {};
-    }
-
-    if (it->is_string()) {
-        return SplitCandidates(it->get<std::string>());
-    }
-
+    if (!obj || !obj->is_object()) return {};
+    auto it = obj->find(field);
+    if (it == obj->end()) return {};
+    if (it->is_string()) return SplitStringList(it->get<std::string>());
     if (it->is_array()) {
         std::vector<std::string> cleaned;
         cleaned.reserve(it->size());
         for (const auto &value : *it) {
             if (value.is_string()) {
                 auto trimmed = Trim(value.get<std::string>());
-                if (!trimmed.empty()) {
-                    cleaned.push_back(trimmed);
-                }
+                if (!trimmed.empty()) cleaned.push_back(trimmed);
             }
         }
-
         std::unordered_set<std::string> seen;
         std::vector<std::string> unique_out;
         unique_out.reserve(cleaned.size());
         for (const auto &candidate : cleaned) {
-            if (seen.insert(candidate).second) {
-                unique_out.push_back(candidate);
-            }
+            if (seen.insert(candidate).second) unique_out.push_back(candidate);
         }
         return unique_out;
     }
-
     return {};
 }

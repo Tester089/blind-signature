@@ -25,5 +25,6 @@ void ReplyError(httplib::Response &res, int status, const std::string &code, con
 std::optional<std::string> GetStringField(const httplib::Request &req, const json *obj, const std::string &field);
 std::optional<int> GetIntField(const httplib::Request &req, const json *obj, const std::string &field);
 std::vector<std::string> GetCandidatesField(const httplib::Request &req, const json *obj);
+std::vector<std::string> GetStringArrayField(const httplib::Request &req, const json *obj, const std::string &field);
 
 Poll *FindPollLocked(const std::string &poll_id, httplib::Response &res);
