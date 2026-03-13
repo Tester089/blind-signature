@@ -11,7 +11,15 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 qt_standard_project_setup()
 
-qt_add_executable(blind_desktop WIN32
+set(APP_ICON_ICO ${CMAKE_CURRENT_SOURCE_DIR}/assets/app.ico)
+set(APP_ICON_ICNS ${CMAKE_CURRENT_SOURCE_DIR}/assets/app.icns)
+
+if (WIN32)
+    set(APP_ICON_RESOURCE ${CMAKE_CURRENT_SOURCE_DIR}/assets/app.rc)
+endif()
+
+qt_add_executable(blind_desktop
+        ${APP_ICON_RESOURCE}
         main.cpp
         mainwindow.cpp
         mainwindow.h
@@ -35,10 +43,30 @@ qt_add_executable(blind_desktop WIN32
         net/dto.h
 )
 
+set_target_properties(blind_desktop PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_ICON_FILE app.icns
+)
+
+set_source_files_properties(${APP_ICON_ICNS} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources"
+)
+
+target_sources(blind_desktop PRIVATE
+        ${APP_ICON_ICNS}
+)
+
 target_link_libraries(blind_desktop PRIVATE
         Qt6::Widgets
         Qt6::Network
 )
+
+if (MSVC)
+    target_compile_options(blind_desktop PRIVATE /W4 /utf-8 /EHsc)
+else()
+    target_compile_options(blind_desktop PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 set(REPO_ROOT ${CMAKE_CURRENT_LIST_DIR}/..)
 

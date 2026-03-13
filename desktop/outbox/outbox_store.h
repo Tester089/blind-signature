@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <QObject>
 #include <QVector>
 #include <QString>
@@ -40,5 +41,5 @@ private:
     QString path_;
     QVector<OutboxItem> items_;
 
-    int indexOf(const QString& id) const;
+    std::optional<int> indexOf(const QString& id) const;
 };

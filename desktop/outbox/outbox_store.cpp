@@ -1,12 +1,11 @@
+#include <optional>
 #include "outbox_store.h"
-
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
-
 #include "utils/time.h"
 
 static QJsonObject voteToJson(const dto::EncryptedVote& v) {
@@ -65,26 +64,34 @@ QString OutboxStore::storagePath() const { return path_; }
 
 QVector<OutboxItem> OutboxStore::items() const { return items_; }
 
-int OutboxStore::indexOf(const QString& id) const {
+std::optional<int> OutboxStore::indexOf(const QString& id) const {
     for (int i = 0; i < items_.size(); ++i) {
-        if (items_[i].id == id) return i;
+        if (items_[i].id == id) {
+            return i;
+        }
     }
-    return -1;
+    return std::nullopt;
 }
 
 void OutboxStore::upsert(const OutboxItem& item) {
-    const int idx = indexOf(item.id);
-    if (idx >= 0) items_[idx] = item;
-    else items_.push_back(item);
+    const auto idx = indexOf(item.id);
+    if (idx.has_value()) {
+        items_[*idx] = item;
+    } else {
+        items_.push_back(item);
+    }
 
     save();
     emit changed();
 }
 
 bool OutboxStore::remove(const QString& id) {
-    const int idx = indexOf(id);
-    if (idx < 0) return false;
-    items_.removeAt(idx);
+    const auto idx = indexOf(id);
+    if (!idx.has_value()) {
+        return false;
+    }
+
+    items_.removeAt(*idx);
     save();
     emit changed();
     return true;
