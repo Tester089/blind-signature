@@ -32,7 +32,7 @@ void client_example() {
 
 
 void server_example() {
-    std::string keys = KeyGen();
+    std::string keys = KeyGenFlat();
     std::string pk = keys.substr(0, keys.find(':'));
     std::string sk = keys.substr(keys.find(':') + 1);
 
