@@ -10,7 +10,7 @@ add_executable(blind_server
         main.cpp
         handlers.cpp
         json_utils.cpp
-        poll.cpp
+        polls.cpp
         core/core.cpp
 )
 
@@ -49,7 +49,7 @@ enable_testing()
 add_executable(blind_tests
         tests.cpp
         json_utils.cpp
-        poll.cpp
+        polls.cpp
 )
 
 target_include_directories(blind_tests PRIVATE
