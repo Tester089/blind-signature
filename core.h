@@ -9,20 +9,23 @@
 #include <variant>
 #include <memory>
 
-constexpr unsigned long long BASA       = 1ull << 32;
-constexpr unsigned int MAX_CHUNK        = BASA - 1;
-constexpr unsigned int HIGHEST_BIT      = 1u << 31;
-constexpr int CHUNK_BITS                = 32;
-constexpr int HEX_CHARS_PER_CHUNK       = CHUNK_BITS / 4;
+constexpr unsigned long long BASA = 1ull << 32;
+constexpr unsigned int MAX_CHUNK = BASA - 1;
+constexpr unsigned int HIGHEST_BIT = 1u << 31;
+constexpr int CHUNK_BITS = 32;
+constexpr int HEX_CHARS_PER_CHUNK = CHUNK_BITS / 4;
+constexpr int KEY_BITS = 512;
+constexpr int MR_ROUNDS = 20;
+constexpr unsigned long long E_CNST = 65537;
 
-constexpr int KEY_BITS   = 512;
-constexpr int MR_ROUNDS  = 20;
-constexpr unsigned long long RSA_E = 65537;
 
+// FNV constanti: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 constexpr unsigned long long FNV_OFFSET = 14695981039346656037ull;
-constexpr unsigned long long FNV_PRIME  = 1099511628211ull;
-constexpr unsigned long long MIX_C1     = 0xff51afd7ed558ccdull;
-constexpr unsigned long long MIX_C2     = 0xc4ceb9fe1a85ec53ull;
+constexpr unsigned long long FNV_PRIME = 1099511628211ull;
+
+// MurmurHash constanti: https://chromium.googlesource.com/external/smhasher/+/58dd8869da8c95f5c26ec70a6cdd243a7647c8fc/MurmurHash3.cpp
+constexpr unsigned long long MIX_C1 = 0xff51afd7ed558ccdull;
+constexpr unsigned long long MIX_C2 = 0xc4ceb9fe1a85ec53ull;
 
 struct BigInt {
     std::vector<unsigned int> d;
@@ -31,7 +34,7 @@ struct BigInt {
         d.push_back(0);
     }
 
-    BigInt(unsigned long long v) {
+    explicit BigInt(unsigned long long v) {
         d.push_back(v & MAX_CHUNK);
         unsigned int hi = v >> CHUNK_BITS;
         if (hi != 0) {
@@ -85,7 +88,7 @@ inline BigInt add(const BigInt& a, const BigInt& b) {
     return res;
 }
 
-// assumes a >= b
+
 inline BigInt sub(const BigInt& a, const BigInt& b) {
     BigInt res;
     res.d.resize(a.d.size(), 0);
@@ -131,7 +134,7 @@ inline BigInt shl32(const BigInt& a) {
     return r;
 }
 
-// Can be updated to Knuth Algorithm D, but for our presentation it overkill IMHO.
+// Can be updated to Knuth Algorithm D, but for our case its overkill (IMHO) (Not because it hard, of course).
 inline std::pair<BigInt, BigInt> divmod(const BigInt& a, const BigInt& b) {
     if (b.is_zero()) {
         throw std::runtime_error("div by zero");
@@ -279,7 +282,7 @@ inline BigInt from_hex(const std::string& s) {
     }
     for (int i = (int)padded.size(); i > 0; i -= HEX_CHARS_PER_CHUNK) {
         std::string chunk = padded.substr(i - HEX_CHARS_PER_CHUNK, HEX_CHARS_PER_CHUNK);
-        r.d.push_back((unsigned int)std::stoul(chunk, nullptr, 16));
+        r.d.push_back(static_cast<unsigned int>(std::stoul(chunk, nullptr, 16)));
     }
     r.trim();
     return r;
@@ -290,7 +293,7 @@ inline BigInt random_bigint(size_t bits, std::mt19937_64& rng) {
     size_t chunks = (bits + CHUNK_BITS - 1) / CHUNK_BITS;
     r.d.resize(chunks, 0);
     for (auto& chunk : r.d) {
-        chunk = (unsigned int)(rng() % BASA);
+        chunk = static_cast<unsigned int>(rng() % BASA);
     }
     size_t top_bits = bits % CHUNK_BITS;
     if (top_bits != 0) {
@@ -312,7 +315,7 @@ inline bool miller_rabin(const BigInt& n, int rounds, std::mt19937_64& rng) {
     BigInt d = n1;
     int s = 0;
     while (!(d.d[0] & 1)) {
-        for (int i = 0; i < (int)d.d.size() - 1; i++) {
+        for (int i = 0; i < static_cast<int>(d.d.size()) - 1; i++) {
             d.d[i] = (d.d[i] >> 1) | (d.d[i + 1] << (CHUNK_BITS - 1));
         }
         d.d.back() >>= 1;
@@ -328,8 +331,7 @@ inline bool miller_rabin(const BigInt& n, int rounds, std::mt19937_64& rng) {
         BigInt x = modpow(a, d, n);
         if (x.is_one() || cmp(x, n1) == 0) continue;
         bool composite = true;
-        // off-by-one here, s should be s-1
-        for (int r2 = 0; r2 < s; r2++) {
+        for (int r2 = 0; r2 < s - 1; r2++) {
             x = bigmod(mul(x, x), n);
             if (cmp(x, n1) == 0) {
                 composite = false;
@@ -352,7 +354,7 @@ inline BigInt gen_prime(size_t bits, std::mt19937_64& rng) {
 inline BigInt hash_msg(const std::string& msg, const BigInt& n) {
     unsigned long long h = FNV_OFFSET;
     for (char c : msg) {
-        h = h ^ (unsigned char)c;
+        h = h ^ static_cast<unsigned char>(c);
         h = h * FNV_PRIME;
     }
     BigInt result(h);
@@ -365,7 +367,7 @@ inline BigInt hash_msg(const std::string& msg, const BigInt& n) {
         result = bigmod(add(mul(result, BigInt(h)), BigInt(i + 1)), n);
     }
     if (result.is_zero() || result.is_one()) {
-        result = BigInt(RSA_E);
+        result = BigInt(E_CNST);
     }
     return bigmod(result, sub(n, BigInt(2)));
 }
@@ -496,8 +498,8 @@ public:
 };
 
 struct KeyPair {
-    std::shared_ptr<PublicKey> pk;   // shared because client and signer may reference same pk
-    std::unique_ptr<PrivateKey> sk;  // unique - only server owns private key
+    std::shared_ptr<PublicKey> pk;
+    std::unique_ptr<PrivateKey> sk;
 };
 
 class ISigner {
@@ -519,52 +521,165 @@ public:
     virtual std::string finalize(const std::string& msg, const std::string& blind_sig, const std::string& inv) = 0;
 };
 
-// class RsaBlindSigner : public ISigner {
-//     std::shared_ptr<PrivateKey> sk_;
-// public:
-//     explicit RsaBlindSigner(std::shared_ptr<PrivateKey> sk) : sk_(sk) {
-//         if (!sk_ || !sk_->isValid()) throw KeyException("invalid private key passed to signer");
-//     }
-//     std::string sign(const std::string& blinded_msg) override {
-//         auto parts = split_str(blinded_msg, ':');
-//         if (parts.empty() || parts[0].empty()) throw SignException("bad blinded message format");
-//         return to_hex(s_blind);
-//     }
-// };
-//
-// class RsaVerifier : public IVerifier {
-//     std::shared_ptr<PublicKey> pk_;
-// public:
-//     explicit RsaVerifier(std::shared_ptr<PublicKey> pk) : pk_(pk) {
-//         if (!pk_ || !pk_->isValid()) throw KeyException("invalid public key for verifier");
-//     }
-//     bool verify(const std::string& msg, const std::string& sig) override {
-//         if (sig.empty()) return false;
+class RsaBlindSigner : public ISigner {
+    std::shared_ptr<PrivateKey> sk_;
+public:
+    explicit RsaBlindSigner(std::shared_ptr<PrivateKey> sk) : sk_(sk) {
+        if (!sk_ || !sk_->isValid()) {
+            throw KeyException("invalid private key passed to signer");
+        }
+    }
 
-//     }
-// };
-//
-// class RsaBlinder : public IBlinder {
-//     std::shared_ptr<PublicKey> pk_;
-//     std::mt19937_64 rng_;
-// public:
-//     explicit RsaBlinder(std::shared_ptr<PublicKey> pk)
-//         : pk_(pk), rng_(std::random_device{}()) {
-//         if (!pk_ || !pk_->isValid()) throw KeyException("invalid public key for blinder");
-//     }
-//     std::string blind(const std::string& msg) override {
-//         BigInt r;
-//         while (true) {
-//             r = random_bigint(pk_->n.d.size() * CHUNK_BITS - 1, rng_);
-//             r = bigmod(r, sub(pk_->n, BigInt(2)));
-//             r = add(r, BigInt(2));
-//             BigInt g = gcd(r, pk_->n);
-//             if (g.is_one()) break;
-//         }
-//     std::string finalize(const std::string& msg, const std::string& blind_sig, const std::string& inv) override {
-//         BigInt s_blind = from_hex(blind_sig);
-//         BigInt r_inv = from_hex(inv);
-//         BigInt sig = bigmod(mul(s_blind, r_inv), pk_->n);
-//         return to_hex(sig);
-//     }
-// };
+    std::string sign(const std::string& blinded_msg) override {
+        auto parts = split_str(blinded_msg, ':');
+        if (parts.empty() || parts[0].empty()) {
+            throw SignException("bad blinded message format");
+        }
+        BigInt m_blind = from_hex(parts[0]);
+        BigInt s_blind = modpow(m_blind, sk_->d, sk_->n);
+        return to_hex(s_blind);
+    }
+};
+
+class RsaVerifier : public IVerifier {
+    std::shared_ptr<PublicKey> pk_;
+public:
+    explicit RsaVerifier(std::shared_ptr<PublicKey> pk) : pk_(pk) {
+        if (!pk_ || !pk_->isValid()) {
+            throw KeyException("invalid public key for verifier");
+        }
+    }
+
+    bool verify(const std::string& msg, const std::string& sig) override {
+        if (sig.empty()) return false;
+        try {
+            BigInt s = from_hex(sig);
+            BigInt h_rec = modpow(s, pk_->e, pk_->n);
+            BigInt h_exp = hash_msg(msg, pk_->n);
+            return cmp(h_rec, h_exp) == 0;
+        } catch (...) {
+            return false;
+        }
+    }
+};
+
+class RsaBlinder : public IBlinder {
+    std::shared_ptr<PublicKey> pk_;
+    std::mt19937_64 rng_;
+public:
+    explicit RsaBlinder(std::shared_ptr<PublicKey> pk)
+        : pk_(pk), rng_(std::random_device{}()) {
+        if (!pk_ || !pk_->isValid()) {
+            throw KeyException("invalid public key for blinder");
+        }
+    }
+
+    std::string blind(const std::string& msg) override {
+        BigInt r;
+        while (true) {
+            r = random_bigint(pk_->n.d.size() * CHUNK_BITS - 1, rng_);
+            r = bigmod(r, sub(pk_->n, BigInt(2)));
+            r = add(r, BigInt(2));
+            BigInt g = gcd(r, pk_->n);
+            if (g.is_one()) break;
+        }
+
+        BigInt H = hash_msg(msg, pk_->n);
+        BigInt re = modpow(r, pk_->e, pk_->n);
+        BigInt m_blind = bigmod(mul(H, re), pk_->n);
+        BigInt r_inv = modinv(r, pk_->n);
+
+        return to_hex(m_blind) + ":" + to_hex(r_inv);
+    }
+
+    std::string finalize(const std::string& msg, const std::string& blind_sig, const std::string& inv) override {
+        BigInt s_blind = from_hex(blind_sig);
+        BigInt r_inv = from_hex(inv);
+        BigInt sig = bigmod(mul(s_blind, r_inv), pk_->n);
+        return to_hex(sig);
+    }
+};
+
+inline KeyPair KeyGen() {
+    std::mt19937_64 rng(std::random_device{}());
+
+    BigInt p = gen_prime(KEY_BITS, rng);
+    BigInt q = gen_prime(KEY_BITS, rng);
+    BigInt n = mul(p, q);
+
+    BigInt p1 = sub(p, BigInt(1));
+    BigInt q1 = sub(q, BigInt(1));
+    BigInt phi = mul(p1, q1);
+
+    BigInt e(E_CNST);
+    BigInt d = modinv(e, phi);
+
+    auto pk = std::make_shared<PublicKey>();
+    pk->n = n;
+    pk->e = e;
+    pk->raw = to_hex(n) + ":" + to_hex(e);
+
+    auto sk = std::make_shared<PrivateKey>();
+    sk->n = n;
+    sk->d = d;
+    sk->raw = to_hex(n) + ":" + to_hex(d);
+
+    KeyPair kp;
+    kp.pk = pk;
+    kp.sk = std::make_unique<PrivateKey>(*sk);
+    return kp;
+}
+
+inline std::string KeyGenFlat() {
+    auto kp = KeyGen();
+    return kp.pk->toString() + "|" + kp.sk->toString();
+}
+
+inline std::string Blind(const std::string& pk_str, const std::string& msg) {
+    auto pk_opt = PublicKey::fromString(pk_str);
+    if (!pk_opt.has_value()) {
+        throw ParseException("cannot parse public key: " + pk_str.substr(0, 20));
+    }
+    auto pk = std::make_shared<PublicKey>(pk_opt.value());
+    RsaBlinder blinder(pk);
+    return blinder.blind(msg);
+}
+
+inline std::string BlindSign(const std::string& sk_str, const std::string& blinded_msg) {
+    auto sk_opt = PrivateKey::fromString(sk_str);
+    if (!sk_opt.has_value()) {
+        throw ParseException("cannot parse private key");
+    }
+    auto sk = std::make_shared<PrivateKey>(sk_opt.value());
+    RsaBlindSigner signer(sk);
+    return signer.sign(blinded_msg);
+}
+
+inline std::string Finalize(const std::string& pk_str, const std::string& msg,
+                            const std::string& blind_sig, const std::string& inv) {
+    auto pk_opt = PublicKey::fromString(pk_str);
+    if (!pk_opt.has_value()) {
+        throw ParseException("bad pk in finalize");
+    }
+    auto pk = std::make_shared<PublicKey>(pk_opt.value());
+    RsaBlinder blinder(pk);
+    return blinder.finalize(msg, blind_sig, inv);
+}
+
+inline bool Verify(const std::string& pk_str, const std::string& msg, const std::string& sig) {
+    auto pk_opt = PublicKey::fromString(pk_str);
+    if (!pk_opt.has_value()) {
+        throw ParseException("bad pk in verify");
+    }
+    auto pk = std::make_shared<PublicKey>(pk_opt.value());
+    RsaVerifier verifier(pk);
+    return verifier.verify(msg, sig);
+}
+
+inline std::optional<bool> TryVerify(const std::string& pk_str, const std::string& msg, const std::string& sig) {
+    try {
+        return Verify(pk_str, msg, sig);
+    } catch (const ParseException&) {
+        return std::nullopt;
+    }
+}
