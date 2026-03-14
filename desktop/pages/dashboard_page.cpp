@@ -122,7 +122,7 @@ void DashboardPage::setupUi() {
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
-    auto *content = new QWidget(scrollArea);
+    auto *content = new QWidget;
     auto *root = new QVBoxLayout(content);
     root->setContentsMargins(18, 18, 18, 18);
     root->setSpacing(14);
@@ -148,6 +148,13 @@ void DashboardPage::setupUi() {
             "padding: 6px 10px; background: #2d2d2d; border-radius: 8px;"
     );
 
+    auto *userChip = new QLabel("User:");
+    userChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
+    userValueLabel_ = new QLabel("—");
+    userValueLabel_->setStyleSheet(
+            "padding: 6px 10px; background: #2d2d2d; border-radius: 8px;"
+    );
+
     topBar->addWidget(titleLabel);
     topBar->addStretch();
     topBar->addWidget(serverChip);
@@ -155,6 +162,9 @@ void DashboardPage::setupUi() {
     topBar->addSpacing(8);
     topBar->addWidget(modeChip);
     topBar->addWidget(modeValueLabel_);
+    topBar->addSpacing(8);
+    topBar->addWidget(userChip);
+    topBar->addWidget(userValueLabel_);
 
     root->addLayout(topBar);
 
@@ -176,18 +186,25 @@ void DashboardPage::setupUi() {
     auto *pollButtonsRow = new QHBoxLayout;
     refreshPollsButton_ = new QPushButton("Refresh", pollCard);
     createPollButton_ = new QPushButton("Create demo poll", pollCard);
+    closePollButton_ = new QPushButton("Close poll", pollCard);
 
     pollButtonsRow->addWidget(refreshPollsButton_);
     pollButtonsRow->addWidget(createPollButton_);
+    pollButtonsRow->addWidget(closePollButton_);
 
     pollTitleValueLabel_ = new QLabel("—", pollCard);
     pollStatusValueLabel_ = new QLabel("—", pollCard);
     pollVotesValueLabel_ = new QLabel("—", pollCard);
+    pollOwnerValueLabel_ = new QLabel("—", pollCard);
+    pollAllowedValueLabel_ = new QLabel("Everyone", pollCard);
+    pollAllowedValueLabel_->setWordWrap(true);
 
     auto *pollForm = new QFormLayout;
     pollForm->addRow("Title:", pollTitleValueLabel_);
     pollForm->addRow("Status:", pollStatusValueLabel_);
     pollForm->addRow("Votes:", pollVotesValueLabel_);
+    pollForm->addRow("Owner:", pollOwnerValueLabel_);
+    pollForm->addRow("Allowed:", pollAllowedValueLabel_);
 
     pollCardLayout->addWidget(pollsCombo_);
     pollCardLayout->addLayout(pollButtonsRow);
@@ -319,7 +336,7 @@ void DashboardPage::setupUi() {
     advLayout->addWidget(logCard);
 
     root->addWidget(advancedPanel_);
-    root->addStretch(); // чтобы страница красиво тянулась
+    root->addStretch();
 
     scrollArea->setWidget(content);
     outerLayout->addWidget(scrollArea);
