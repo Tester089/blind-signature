@@ -20,7 +20,7 @@
 
 #include "widgets/connect_button.h"
 #include "widgets/status_badge.h"
-#include "core.h"
+#include "../core.h"
 
 namespace {
 

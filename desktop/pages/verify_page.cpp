@@ -8,7 +8,7 @@
 #include <QLabel>
 
 #include "widgets/card_frame.h"
-#include "core.h"
+#include "../core.h"
 
 VerifyPage::VerifyPage(QWidget* parent) : QWidget(parent) {
     auto* root = new QVBoxLayout(this);
