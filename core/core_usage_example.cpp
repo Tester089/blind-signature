@@ -1,5 +1,5 @@
 #define BLIND_SIG_IMPLEMENTATION
-#include "core.h"
+#include "../core.h"
 #include <iostream>
 
 
