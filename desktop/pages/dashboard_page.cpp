@@ -24,9 +24,8 @@
 
 namespace {
 
-    QFrame* makeCard(QWidget* parent = nullptr)
-    {
-        auto* frame = new QFrame(parent);
+    QFrame *makeCard(QWidget * parent = nullptr) {
+        auto *frame = new QFrame(parent);
         frame->setFrameShape(QFrame::StyledPanel);
         frame->setObjectName("dashboardCard");
         frame->setStyleSheet(
@@ -39,24 +38,21 @@ namespace {
         return frame;
     }
 
-    QLabel* makeCardTitle(const QString& text, QWidget* parent = nullptr)
-    {
-        auto* label = new QLabel(text, parent);
+    QLabel *makeCardTitle(const QString &text, QWidget *parent = nullptr) {
+        auto *label = new QLabel(text, parent);
         label->setStyleSheet("font-size: 16px; font-weight: 700;");
         return label;
     }
 
-    QString boolToOpenClosed(bool isOpen)
-    {
+    QString boolToOpenClosed(bool isOpen) {
         return isOpen ? "Open" : "Closed";
     }
 
 } // namespace
 
-DashboardPage::DashboardPage(QWidget* parent)
+DashboardPage::DashboardPage(QWidget *parent)
         : QWidget(parent),
-          api_(new ApiClient(this))
-{
+          api_(new ApiClient(this)) {
     api_->setBaseUrl(QUrl("http://127.0.0.1:8080/"));
 
     setupUi();
@@ -69,8 +65,7 @@ DashboardPage::DashboardPage(QWidget* parent)
     refreshForCurrentServer(true);
 }
 
-void DashboardPage::setServerUrl(const QString& url)
-{
+void DashboardPage::setServerUrl(const QString &url) {
     api_->setBaseUrl(QUrl(url));
     const QString normalized = api_->baseUrl().toString(QUrl::FullyDecoded);
     serverValueLabel_->setText(normalized);
@@ -78,13 +73,11 @@ void DashboardPage::setServerUrl(const QString& url)
     refreshForCurrentServer(true);
 }
 
-QString DashboardPage::serverUrl() const
-{
+QString DashboardPage::serverUrl() const {
     return api_->baseUrl().toString(QUrl::FullyDecoded);
 }
 
-void DashboardPage::refreshForCurrentServer(bool withHealthCheck)
-{
+void DashboardPage::refreshForCurrentServer(bool withHealthCheck) {
     currentPoll_ = PollDetails{};
     currentPollId_.clear();
     currentPublicKey_.clear();
@@ -117,31 +110,30 @@ void DashboardPage::refreshForCurrentServer(bool withHealthCheck)
     }
 }
 
-void DashboardPage::setupUi()
-{
-    auto* root = new QVBoxLayout(this);
+void DashboardPage::setupUi() {
+    auto *root = new QVBoxLayout(this);
     root->setContentsMargins(18, 18, 18, 18);
     root->setSpacing(14);
 
     // ===== top bar =====
-    auto* topBar = new QHBoxLayout;
+    auto *topBar = new QHBoxLayout;
     topBar->setSpacing(10);
 
-    auto* titleLabel = new QLabel("Blind Vote Dashboard");
+    auto *titleLabel = new QLabel("Blind Vote Dashboard");
     titleLabel->setStyleSheet("font-size: 22px; font-weight: 800;");
 
-    auto* serverChip = new QLabel("Server:");
+    auto *serverChip = new QLabel("Server:");
     serverChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
     serverValueLabel_ = new QLabel(api_->baseUrl().toString(QUrl::FullyDecoded));
     serverValueLabel_->setStyleSheet(
             "padding: 6px 10px; background: #2d2d2d; border-radius: 8px;"
     );
 
-    auto* modeChip = new QLabel("Mode:");
+    auto *modeChip = new QLabel("Mode:");
     modeChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
     modeValueLabel_ = new QLabel("Real API + Login whitelist");
 
-    auto* userChip = new QLabel("User:");
+    auto *userChip = new QLabel("User:");
     userChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
     userValueLabel_ = new QLabel("—");
     userValueLabel_->setStyleSheet("padding: 6px 10px; background: #2d2d2d; border-radius: 8px;");
@@ -163,13 +155,13 @@ void DashboardPage::setupUi()
     root->addLayout(topBar);
 
     // ===== main grid =====
-    auto* grid = new QGridLayout;
+    auto *grid = new QGridLayout;
     grid->setHorizontalSpacing(14);
     grid->setVerticalSpacing(14);
 
     // ===== left: poll card =====
-    auto* pollCard = makeCard(this);
-    auto* pollCardLayout = new QVBoxLayout(pollCard);
+    auto *pollCard = makeCard(this);
+    auto *pollCardLayout = new QVBoxLayout(pollCard);
     pollCardLayout->setContentsMargins(14, 14, 14, 14);
     pollCardLayout->setSpacing(10);
 
@@ -178,7 +170,7 @@ void DashboardPage::setupUi()
     pollsCombo_ = new QComboBox(pollCard);
     pollsCombo_->setMinimumHeight(34);
 
-    auto* pollButtonsRow = new QHBoxLayout;
+    auto *pollButtonsRow = new QHBoxLayout;
     refreshPollsButton_ = new QPushButton("Refresh", pollCard);
     createPollButton_ = new QPushButton("Create poll", pollCard);
     closePollButton_ = new QPushButton("Close my poll", pollCard);
@@ -193,7 +185,7 @@ void DashboardPage::setupUi()
     pollOwnerValueLabel_ = new QLabel("—", pollCard);
     pollAllowedValueLabel_ = new QLabel("—", pollCard);
 
-    auto* pollForm = new QFormLayout;
+    auto *pollForm = new QFormLayout;
     pollForm->addRow("Title:", pollTitleValueLabel_);
     pollForm->addRow("Status:", pollStatusValueLabel_);
     pollForm->addRow("Votes:", pollVotesValueLabel_);
@@ -206,12 +198,12 @@ void DashboardPage::setupUi()
     pollCardLayout->addStretch();
 
     // ===== center: main action card =====
-    auto* actionCard = makeCard(this);
-    auto* actionCardLayout = new QVBoxLayout(actionCard);
+    auto *actionCard = makeCard(this);
+    auto *actionCardLayout = new QVBoxLayout(actionCard);
     actionCardLayout->setContentsMargins(20, 20, 20, 20);
     actionCardLayout->setSpacing(14);
 
-    auto* actionTitle = makeCardTitle("Vote Session", actionCard);
+    auto *actionTitle = makeCardTitle("Vote Session", actionCard);
     actionTitle->setAlignment(Qt::AlignHCenter);
 
     connectButton_ = new ConnectButton(actionCard);
@@ -226,8 +218,8 @@ void DashboardPage::setupUi()
     actionCardLayout->addStretch();
 
     // ===== right: vote card =====
-    auto* voteCard = makeCard(this);
-    auto* voteCardLayout = new QVBoxLayout(voteCard);
+    auto *voteCard = makeCard(this);
+    auto *voteCardLayout = new QVBoxLayout(voteCard);
     voteCardLayout->setContentsMargins(14, 14, 14, 14);
     voteCardLayout->setSpacing(10);
 
@@ -249,7 +241,7 @@ void DashboardPage::setupUi()
     maxDelaySpin_->setValue(90);
     maxDelaySpin_->setSuffix(" sec");
 
-    auto* voteForm = new QFormLayout;
+    auto *voteForm = new QFormLayout;
     voteForm->addRow("Candidate:", candidateCombo_);
     voteForm->addRow("", delayCheckBox_);
     voteForm->addRow("Min delay:", minDelaySpin_);
@@ -273,12 +265,12 @@ void DashboardPage::setupUi()
     root->addWidget(advancedButton_);
 
     advancedPanel_ = new QWidget(this);
-    auto* advLayout = new QVBoxLayout(advancedPanel_);
+    auto *advLayout = new QVBoxLayout(advancedPanel_);
     advLayout->setContentsMargins(0, 0, 0, 0);
     advLayout->setSpacing(12);
 
-    auto* protocolCard = makeCard(advancedPanel_);
-    auto* protocolCardLayout = new QVBoxLayout(protocolCard);
+    auto *protocolCard = makeCard(advancedPanel_);
+    auto *protocolCardLayout = new QVBoxLayout(protocolCard);
     protocolCardLayout->setContentsMargins(14, 14, 14, 14);
     protocolCardLayout->setSpacing(10);
 
@@ -292,7 +284,7 @@ void DashboardPage::setupUi()
     blindSignatureEdit_ = new QLineEdit(protocolCard);
     finalSignatureEdit_ = new QLineEdit(protocolCard);
 
-    for (QLineEdit* edit : {
+    for (QLineEdit *edit: {
             publicKeyEdit_,
             tokenEdit_,
             ballotEdit_,
@@ -304,7 +296,7 @@ void DashboardPage::setupUi()
         edit->setReadOnly(true);
     }
 
-    auto* protocolForm = new QFormLayout;
+    auto *protocolForm = new QFormLayout;
     protocolForm->addRow("Public key:", publicKeyEdit_);
     protocolForm->addRow("Token:", tokenEdit_);
     protocolForm->addRow("Ballot:", ballotEdit_);
@@ -315,8 +307,8 @@ void DashboardPage::setupUi()
 
     protocolCardLayout->addLayout(protocolForm);
 
-    auto* logCard = makeCard(advancedPanel_);
-    auto* logCardLayout = new QVBoxLayout(logCard);
+    auto *logCard = makeCard(advancedPanel_);
+    auto *logCardLayout = new QVBoxLayout(logCard);
     logCardLayout->setContentsMargins(14, 14, 14, 14);
     logCardLayout->setSpacing(10);
 
@@ -334,8 +326,7 @@ void DashboardPage::setupUi()
     root->addWidget(advancedPanel_);
 }
 
-void DashboardPage::setupConnections()
-{
+void DashboardPage::setupConnections() {
     connect(advancedButton_, &QPushButton::clicked, this, [this]() {
         const bool show = !advancedPanel_->isVisible();
         advancedPanel_->setVisible(show);
@@ -350,23 +341,36 @@ void DashboardPage::setupConnections()
     connect(createPollButton_, &QPushButton::clicked, this, [this]() {
         setBusyState("Creating poll...");
         {
-        bool ok = false;
-        QString title = QInputDialog::getText(this, "Create poll", "Poll title:", QLineEdit::Normal, "My poll", &ok);
-        if (!ok || title.trimmed().isEmpty()) return;
-        QString candidatesRaw = QInputDialog::getMultiLineText(this, "Create poll", "Candidates (one per line or separated by commas):", "Alice\nBob", &ok);
-        if (!ok) return;
-        QStringList candidates;
-        for (QString part : candidatesRaw.split(QRegularExpression("[\n,|]"), Qt::SkipEmptyParts)) {
-            part = part.trimmed(); if (!part.isEmpty()) candidates << part;
+            bool ok = false;
+            QString title = QInputDialog::getText(this, "Create poll", "Poll title:", QLineEdit::Normal, "My poll",
+                                                  &ok);
+            if (!ok || title.trimmed().isEmpty()) return;
+            QString candidatesRaw = QInputDialog::getMultiLineText(this, "Create poll",
+                                                                   "Candidates (one per line or separated by commas):",
+                                                                   "Alice\nBob", &ok);
+            if (!ok) return;
+            QStringList candidates;
+            for (QString part: candidatesRaw.split(QRegularExpression("[\n,|]"), Qt::SkipEmptyParts)) {
+                part = part.trimmed();
+                if (!part.isEmpty()) candidates << part;
+            }
+            if (candidates.size() < 2) {
+                setErrorState("Need at least 2 candidates");
+                appendLog("Create poll failed: need at least 2 candidates.");
+                return;
+            }
+            QString allowedRaw = QInputDialog::getMultiLineText(this, "Create poll",
+                                                                "Allowed logins (one per line, comma or | separated). Leave empty = everyone.",
+                                                                "", &ok);
+            if (!ok) return;
+            QStringList allowed;
+            for (QString part: allowedRaw.split(QRegularExpression("[\n,|]"), Qt::SkipEmptyParts)) {
+                part = part.trimmed();
+                if (!part.isEmpty()) allowed << part;
+            }
+            setBusyState("Creating poll...");
+            api_->createPoll(title.trimmed(), candidates, 0, currentUsername_, allowed);
         }
-        if (candidates.size() < 2) { setErrorState("Need at least 2 candidates"); appendLog("Create poll failed: need at least 2 candidates."); return; }
-        QString allowedRaw = QInputDialog::getMultiLineText(this, "Create poll", "Allowed logins (one per line, comma or | separated). Leave empty = everyone.", "", &ok);
-        if (!ok) return;
-        QStringList allowed;
-        for (QString part : allowedRaw.split(QRegularExpression("[\n,|]"), Qt::SkipEmptyParts)) { part=part.trimmed(); if(!part.isEmpty()) allowed << part; }
-        setBusyState("Creating poll...");
-        api_->createPoll(title.trimmed(), candidates, 0, currentUsername_, allowed);
-    }
     });
 
     connect(pollsCombo_, &QComboBox::currentIndexChanged, this, [this](int index) {
@@ -386,13 +390,19 @@ void DashboardPage::setupConnections()
 
     connect(closePollButton_, &QPushButton::clicked, this, [this]() {
         if (currentUsername_.trimmed().isEmpty()) {
-        setErrorState("Username not set");
-        appendLog("Open Settings and set your login first.");
-        return;
-    }
+            setErrorState("Username not set");
+            appendLog("Open Settings and set your login first.");
+            return;
+        }
 
-    if (currentPollId_.isEmpty()) { setErrorState("No poll selected"); return; }
-        if (currentUsername_.trimmed().isEmpty()) { setErrorState("Username not set"); return; }
+        if (currentPollId_.isEmpty()) {
+            setErrorState("No poll selected");
+            return;
+        }
+        if (currentUsername_.trimmed().isEmpty()) {
+            setErrorState("Username not set");
+            return;
+        }
         setBusyState("Closing poll...");
         api_->closePoll(currentPollId_, currentUsername_);
     });
@@ -405,11 +415,11 @@ void DashboardPage::setupConnections()
         api_->listPolls();
     });
 
-    connect(api_, &ApiClient::pollsListed, this, [this](const QList<PollSummary>& polls) {
+    connect(api_, &ApiClient::pollsListed, this, [this](const QList<PollSummary> &polls) {
         pollsCombo_->blockSignals(true);
         pollsCombo_->clear();
 
-        for (const auto& poll : polls) {
+        for (const auto &poll: polls) {
             pollsCombo_->addItem(
                     QString("%1 (%2)").arg(poll.title, boolToOpenClosed(poll.isOpen)),
                     poll.pollId
@@ -433,7 +443,7 @@ void DashboardPage::setupConnections()
         }
     });
 
-    connect(api_, &ApiClient::pollCreated, this, [this](const CreatePollResponse& r) {
+    connect(api_, &ApiClient::pollCreated, this, [this](const CreatePollResponse &r) {
         currentPollId_ = r.pollId;
         currentPublicKey_ = r.publicKey;
         currentToken_.clear();
@@ -441,14 +451,15 @@ void DashboardPage::setupConnections()
         publicKeyEdit_->setText(currentPublicKey_);
         tokenEdit_->clear();
 
-        appendLog("Poll created: " + r.title + " [" + r.pollId + "] owner=" + r.ownerUsername + ", allowed=" + r.allowedUsernames.join(", "));
+        appendLog("Poll created: " + r.title + " [" + r.pollId + "] owner=" + r.ownerUsername + ", allowed=" +
+                  r.allowedUsernames.join(", "));
         setOkState("Poll created");
 
         api_->listPolls();
         api_->getPoll(r.pollId);
     });
 
-    connect(api_, &ApiClient::pollFetched, this, [this](const PollDetails& poll) {
+    connect(api_, &ApiClient::pollFetched, this, [this](const PollDetails &poll) {
         currentPoll_ = poll;
         currentPollId_ = poll.pollId;
         currentPublicKey_ = poll.publicKey;
@@ -463,7 +474,7 @@ void DashboardPage::setupConnections()
         setOkState("Poll ready");
     });
 
-    connect(api_, &ApiClient::tokenIssued, this, [this](const IssueTokenResponse& r) {
+    connect(api_, &ApiClient::tokenIssued, this, [this](const IssueTokenResponse &r) {
         if (r.tokens.isEmpty()) {
             setErrorState("Token not received");
             appendLog("Token response was empty.");
@@ -496,7 +507,7 @@ void DashboardPage::setupConnections()
         api_->signBlinded(currentPollId_, currentToken_, currentBlinded_);
     });
 
-    connect(api_, &ApiClient::blindedSigned, this, [this](const SignResponse& r) {
+    connect(api_, &ApiClient::blindedSigned, this, [this](const SignResponse &r) {
         currentBlindSignature_ = r.blindSignature;
         blindSignatureEdit_->setText(currentBlindSignature_);
 
@@ -519,10 +530,15 @@ void DashboardPage::setupConnections()
             );
         }
 
-        api_->submitVote(currentPollId_, currentBallot_, finalSignature, currentToken_, currentUsername_);
+        api_->submitVote(currentPollId_,
+                         currentBallot_,
+                         finalSignature,
+                         currentToken_,
+                         currentUsername_,
+                         currentPassword_);
     });
 
-    connect(api_, &ApiClient::voteSubmitted, this, [this](const SubmitVoteResponse& r) {
+    connect(api_, &ApiClient::voteSubmitted, this, [this](const SubmitVoteResponse &r) {
         appendLog("Vote submitted successfully.");
         appendLog(QString("Candidate accepted: %1, total votes: %2, user: %3")
                           .arg(r.candidate)
@@ -536,18 +552,18 @@ void DashboardPage::setupConnections()
         api_->getPoll(currentPollId_);
     });
 
-    connect(api_, &ApiClient::resultsReceived, this, [this](const ResultsResponse& r) {
+    connect(api_, &ApiClient::resultsReceived, this, [this](const ResultsResponse &r) {
         appendLog(QString("Results loaded for poll: %1").arg(r.title));
     });
 
-    connect(api_, &ApiClient::pollClosed, this, [this](const ClosePollResponse& r) {
+    connect(api_, &ApiClient::pollClosed, this, [this](const ClosePollResponse &r) {
         appendLog("Poll closed: " + r.pollId);
         setOkState("Poll closed");
         api_->getPoll(r.pollId);
     });
 
     connect(api_, &ApiClient::requestFailed, this,
-            [this](const QString& where, int httpStatus, const QString& code, const QString& message) {
+            [this](const QString &where, int httpStatus, const QString &code, const QString &message) {
                 appendLog(QString("[%1] HTTP %2, %3: %4")
                                   .arg(where)
                                   .arg(httpStatus)
@@ -557,61 +573,65 @@ void DashboardPage::setupConnections()
             });
 }
 
-void DashboardPage::appendLog(const QString& text)
-{
+void DashboardPage::appendLog(const QString &text) {
     logEdit_->appendPlainText(text);
 }
 
-void DashboardPage::setBusyState(const QString& text)
-{
+void DashboardPage::setBusyState(const QString &text) {
     statusBadge_->setState(StatusBadge::State::Busy, text);
     connectButton_->setState(ConnectButton::State::Working);
     connectButton_->setProgress(0.35);
 }
 
-void DashboardPage::setOkState(const QString& text)
-{
+void DashboardPage::setOkState(const QString &text) {
     statusBadge_->setState(StatusBadge::State::Ok, text);
     connectButton_->setState(ConnectButton::State::Success);
     connectButton_->setProgress(1.0);
 }
 
-void DashboardPage::setErrorState(const QString& text)
-{
+void DashboardPage::setErrorState(const QString &text) {
     statusBadge_->setState(StatusBadge::State::Error, text);
     connectButton_->setState(ConnectButton::State::Error);
     connectButton_->setProgress(1.0);
 }
 
 
-void DashboardPage::setUsername(const QString& username)
-{
+void DashboardPage::setUsername(const QString& username) {
     currentUsername_ = username.trimmed();
     userValueLabel_->setText(currentUsername_.isEmpty() ? QStringLiteral("—") : currentUsername_);
 }
 
-QString DashboardPage::username() const
-{
+QString DashboardPage::username() const {
     return currentUsername_;
 }
 
-void DashboardPage::updatePollInfoUi()
-{
+void DashboardPage::setPassword(const QString& password) {
+    currentPassword_ = password;
+}
+
+QString DashboardPage::password() const {
+    return currentPassword_;
+}
+
+void DashboardPage::updatePollInfoUi() {
     pollTitleValueLabel_->setText(currentPoll_.title.isEmpty() ? "—" : currentPoll_.title);
     pollStatusValueLabel_->setText(boolToOpenClosed(currentPoll_.isOpen));
     pollVotesValueLabel_->setText(QString::number(currentPoll_.totalVotes));
-    pollOwnerValueLabel_->setText(currentPoll_.ownerUsername.isEmpty() ? QStringLiteral("—") : currentPoll_.ownerUsername);
-    pollAllowedValueLabel_->setText(currentPoll_.allowedUsernames.isEmpty() ? QStringLiteral("Everyone") : currentPoll_.allowedUsernames.join(", "));
-    closePollButton_->setEnabled(!currentPoll_.ownerUsername.isEmpty() && currentPoll_.ownerUsername == currentUsername_ && currentPoll_.isOpen);
+    pollOwnerValueLabel_->setText(
+            currentPoll_.ownerUsername.isEmpty() ? QStringLiteral("—") : currentPoll_.ownerUsername);
+    pollAllowedValueLabel_->setText(
+            currentPoll_.allowedUsernames.isEmpty() ? QStringLiteral("Everyone") : currentPoll_.allowedUsernames.join(
+                    ", "));
+    closePollButton_->setEnabled(
+            !currentPoll_.ownerUsername.isEmpty() && currentPoll_.ownerUsername == currentUsername_ &&
+            currentPoll_.isOpen);
 }
 
-QString DashboardPage::generateBallotId() const
-{
+QString DashboardPage::generateBallotId() const {
     return QUuid::createUuid().toString(QUuid::WithoutBraces);
 }
 
-void DashboardPage::startVoteFlow()
-{
+void DashboardPage::startVoteFlow() {
     if (currentPollId_.isEmpty()) {
         setErrorState("No poll selected");
         appendLog("Select or create a poll first.");
@@ -636,7 +656,17 @@ void DashboardPage::startVoteFlow()
         appendLog("Poll public key is missing.");
         return;
     }
+    if (currentUsername_.trimmed().isEmpty()) {
+        setErrorState("Username not set");
+        appendLog("Open Settings and set your login first.");
+        return;
+    }
 
+    if (currentPassword_.isEmpty()) {
+        setErrorState("Password not set");
+        appendLog("Open Settings and set your password first.");
+        return;
+    }
     const QString ballotId = generateBallotId();
     currentBallot_ = candidate + "|" + ballotId;
     ballotEdit_->setText(currentBallot_);
@@ -645,5 +675,5 @@ void DashboardPage::startVoteFlow()
     appendLog("Ballot prepared: " + currentBallot_);
 
     setBusyState("Requesting token...");
-    api_->issueToken(currentPollId_, currentUsername_, 1);
+    api_->issueToken(currentPollId_, currentUsername_, currentPassword_, 1);
 }
