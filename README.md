@@ -10,7 +10,6 @@ Module for server side & application for user client for interaction with blind 
 
 
 
-
 ### Terms
 
 | Term | RFC 9474 notation                   | Meaning                                                                                                                |
@@ -22,3 +21,7 @@ Module for server side & application for user client for interaction with blind 
 | `inv` | **inv**erse                     | Inverse of blinding factor.                                                                                            |
 | `blind_sig` | **blind** **sig**nature         | Signed message. Yay, now you may make your vote!                                                                       |
 | `sig` | **sig**nature                   | Encrypted message, which user sends to server with his vote. This post should be anonymous, but server узнает своих :) |
+
+
+
+<img width="441" height="398" alt="tg_image_3254723546" src="https://github.com/user-attachments/assets/b4d518a8-aeac-49f2-b777-88a191269a87" />
