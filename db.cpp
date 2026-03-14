@@ -345,4 +345,3 @@ bool DbRecordVote(const std::string &poll_id, const std::string &candidate, cons
 
     return true;
 }
-}
