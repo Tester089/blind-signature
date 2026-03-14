@@ -17,6 +17,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QRegularExpression>
+#include <QScrollArea>
 
 #include "widgets/connect_button.h"
 #include "widgets/status_badge.h"
@@ -111,7 +112,18 @@ void DashboardPage::refreshForCurrentServer(bool withHealthCheck) {
 }
 
 void DashboardPage::setupUi() {
-    auto *root = new QVBoxLayout(this);
+    auto *outerLayout = new QVBoxLayout(this);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setSpacing(0);
+
+    auto *scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+    auto *content = new QWidget(scrollArea);
+    auto *root = new QVBoxLayout(content);
     root->setContentsMargins(18, 18, 18, 18);
     root->setSpacing(14);
 
@@ -124,19 +136,14 @@ void DashboardPage::setupUi() {
 
     auto *serverChip = new QLabel("Server:");
     serverChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
-    serverValueLabel_ = new QLabel(api_->baseUrl().toString(QUrl::FullyDecoded));
+    serverValueLabel_ = new QLabel("http://127.0.0.1:8080/");
     serverValueLabel_->setStyleSheet(
             "padding: 6px 10px; background: #2d2d2d; border-radius: 8px;"
     );
 
     auto *modeChip = new QLabel("Mode:");
     modeChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
-    modeValueLabel_ = new QLabel("Real API + Login whitelist");
-
-    auto *userChip = new QLabel("User:");
-    userChip->setStyleSheet("font-weight: 700; color: #bdbdbd;");
-    userValueLabel_ = new QLabel("—");
-    userValueLabel_->setStyleSheet("padding: 6px 10px; background: #2d2d2d; border-radius: 8px;");
+    modeValueLabel_ = new QLabel("Real API + Stub Crypto");
     modeValueLabel_->setStyleSheet(
             "padding: 6px 10px; background: #2d2d2d; border-radius: 8px;"
     );
@@ -148,9 +155,6 @@ void DashboardPage::setupUi() {
     topBar->addSpacing(8);
     topBar->addWidget(modeChip);
     topBar->addWidget(modeValueLabel_);
-    topBar->addSpacing(8);
-    topBar->addWidget(userChip);
-    topBar->addWidget(userValueLabel_);
 
     root->addLayout(topBar);
 
@@ -159,8 +163,7 @@ void DashboardPage::setupUi() {
     grid->setHorizontalSpacing(14);
     grid->setVerticalSpacing(14);
 
-    // ===== left: poll card =====
-    auto *pollCard = makeCard(this);
+    auto *pollCard = makeCard(content);
     auto *pollCardLayout = new QVBoxLayout(pollCard);
     pollCardLayout->setContentsMargins(14, 14, 14, 14);
     pollCardLayout->setSpacing(10);
@@ -172,33 +175,26 @@ void DashboardPage::setupUi() {
 
     auto *pollButtonsRow = new QHBoxLayout;
     refreshPollsButton_ = new QPushButton("Refresh", pollCard);
-    createPollButton_ = new QPushButton("Create poll", pollCard);
-    closePollButton_ = new QPushButton("Close my poll", pollCard);
+    createPollButton_ = new QPushButton("Create demo poll", pollCard);
 
     pollButtonsRow->addWidget(refreshPollsButton_);
     pollButtonsRow->addWidget(createPollButton_);
-    pollButtonsRow->addWidget(closePollButton_);
 
     pollTitleValueLabel_ = new QLabel("—", pollCard);
     pollStatusValueLabel_ = new QLabel("—", pollCard);
     pollVotesValueLabel_ = new QLabel("—", pollCard);
-    pollOwnerValueLabel_ = new QLabel("—", pollCard);
-    pollAllowedValueLabel_ = new QLabel("—", pollCard);
 
     auto *pollForm = new QFormLayout;
     pollForm->addRow("Title:", pollTitleValueLabel_);
     pollForm->addRow("Status:", pollStatusValueLabel_);
     pollForm->addRow("Votes:", pollVotesValueLabel_);
-    pollForm->addRow("Owner:", pollOwnerValueLabel_);
-    pollForm->addRow("Allowed:", pollAllowedValueLabel_);
 
     pollCardLayout->addWidget(pollsCombo_);
     pollCardLayout->addLayout(pollButtonsRow);
     pollCardLayout->addLayout(pollForm);
     pollCardLayout->addStretch();
 
-    // ===== center: main action card =====
-    auto *actionCard = makeCard(this);
+    auto *actionCard = makeCard(content);
     auto *actionCardLayout = new QVBoxLayout(actionCard);
     actionCardLayout->setContentsMargins(20, 20, 20, 20);
     actionCardLayout->setSpacing(14);
@@ -217,8 +213,7 @@ void DashboardPage::setupUi() {
     actionCardLayout->addWidget(statusBadge_, 0, Qt::AlignHCenter);
     actionCardLayout->addStretch();
 
-    // ===== right: vote card =====
-    auto *voteCard = makeCard(this);
+    auto *voteCard = makeCard(content);
     auto *voteCardLayout = new QVBoxLayout(voteCard);
     voteCardLayout->setContentsMargins(14, 14, 14, 14);
     voteCardLayout->setSpacing(10);
@@ -261,10 +256,10 @@ void DashboardPage::setupUi() {
     root->addLayout(grid);
 
     // ===== advanced =====
-    advancedButton_ = new QPushButton("Show advanced details", this);
+    advancedButton_ = new QPushButton("Show advanced details", content);
     root->addWidget(advancedButton_);
 
-    advancedPanel_ = new QWidget(this);
+    advancedPanel_ = new QWidget(content);
     auto *advLayout = new QVBoxLayout(advancedPanel_);
     advLayout->setContentsMargins(0, 0, 0, 0);
     advLayout->setSpacing(12);
@@ -324,6 +319,10 @@ void DashboardPage::setupUi() {
     advLayout->addWidget(logCard);
 
     root->addWidget(advancedPanel_);
+    root->addStretch(); // чтобы страница красиво тянулась
+
+    scrollArea->setWidget(content);
+    outerLayout->addWidget(scrollArea);
 }
 
 void DashboardPage::setupConnections() {
@@ -596,7 +595,7 @@ void DashboardPage::setErrorState(const QString &text) {
 }
 
 
-void DashboardPage::setUsername(const QString& username) {
+void DashboardPage::setUsername(const QString &username) {
     currentUsername_ = username.trimmed();
     userValueLabel_->setText(currentUsername_.isEmpty() ? QStringLiteral("—") : currentUsername_);
 }
@@ -605,7 +604,7 @@ QString DashboardPage::username() const {
     return currentUsername_;
 }
 
-void DashboardPage::setPassword(const QString& password) {
+void DashboardPage::setPassword(const QString &password) {
     currentPassword_ = password;
 }
 
