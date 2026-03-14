@@ -1,6 +1,8 @@
 #include "handlers.h"
 #include "json_utils.h"
-#include "core/core.h"
+#define BLIND_SIG_IMPLEMENTATION
+#include "../core.h"
+
 #include "db.h"
 
 #include <iomanip>
